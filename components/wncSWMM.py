@@ -67,6 +67,7 @@ from schema import Schema, Use
 def swmm_load(path_root):
     """ Load data for SWMM input file creation. """
     PATH_data            = op.join(path_root, 'Data')
+
     swmm_data = {}
     swmm_data['subs']    = pd.read_csv(op.join(PATH_data, 'SWMM_subs.csv'),
                                        index_col='Zone')
@@ -141,8 +142,6 @@ def swmm_objs(path_root, swmm_df, mf_df, **params):
     polys    = PolyInp(SUBS)
 
     ### SUBCATCHMENTS
-    #sub.update_col('Outlet',    swmm_df['subs'].Outlet, dtype=int)
-
     sub.df['Outlet']    = swmm_df['subs'].Outlet.astype(int)
     sub.df['perImperv'] = swmm_df['subs'].perImperv
     sub.df['perSlope']  = swmm_df['subs'].perSlope
@@ -171,7 +170,7 @@ def swmm_objs(path_root, swmm_df, mf_df, **params):
     jncts = juncts.final()
 
     ### STREAMS
-    # no init flow; it would double tidal inflow to nodes, which aint right
+    # no init flow; it would double tidal inflow to nodes, which isnt right
     #streams.df['InitFlow']  = swmm_df['links'].conv2cms * (0.3048 + params.get('slr', 0))
     streams.df['From_Node'] = swmm_df['links'].From_Node
     streams.df['To_Node']   = swmm_df['links'].To_Node

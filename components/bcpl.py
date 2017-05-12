@@ -81,6 +81,7 @@ def mf_get_all(path_root, mf_step, **params):
         hds    = ff.FormattedHeadFile(mf_model + '.fhd', precision='double')
     except:
         raise SystemError(mf_model+'.fhd does not exist.\nCheck paths')
+
     head_fhd      = hds.get_data(totim=mf_step+1, mflay=0)
     arr_surf      = np.load(os.path.join(path_root, 'Data', 'Land_Z.npy')).reshape(head_fhd.shape)
     # intialize numpy arrays that will get updated based on row/col location

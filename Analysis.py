@@ -17,9 +17,6 @@ import matplotlib.dates  as mdates
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 
-import flopy.utils.formattedfile as ff
-import flopy.utils.binaryfile as bf
-
 from components import bcpl, swmmtoolbox as swmtbx
 
 class res_base(object):
@@ -607,7 +604,7 @@ def make_plots():
     summary_obj = summary(PATH_result)
     # summary_obj.plot_ts_sys_var()
     # summary_obj.plot_slr_sys_sums()
-    # summary_obj.plot_ts_uzf_sums()
+    summary_obj.plot_ts_uzf_sums()
     #
     # ## runoff
     runoff_obj = runoff(PATH_result)
@@ -624,7 +621,7 @@ def make_plots():
     methods_obj = methods(PATH_result)
     # methods_obj.plot_param_mf()
     # methods_obj.plot_param_swmm()
-    methods_obj.plot_heads_1loc()
+    # methods_obj.plot_heads_1loc()
     # methods_obj.plot_theta_wc()
 
     plt.show()
