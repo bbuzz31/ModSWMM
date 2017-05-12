@@ -318,7 +318,7 @@ def _get_params(days, slr, path_root=False):
 def main(Days, SLR, Coupled, V):
     start      = time.time()
     Child_dir  = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled',
-                                    time.strftime('%b')+'_1', 'Child_{}'.format(SLR))
+                                    time.strftime('%b')+'_2', 'Child_{}'.format(SLR))
     PATH_store = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-10')
     Params     = _get_params(Days, SLR, Child_dir)
     name       = Params['MF']['name']
@@ -379,5 +379,5 @@ if __name__ == '__main__':
     # main(args['<kpers>'], SLR[0], args['--coupled'], args['--verbose'])
 
     # make pickles
-    path_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-10')
-    call(['PickleRaw.py', path_result])
+    # path_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-10')
+    # call(['PickleRaw.py', path_result])
