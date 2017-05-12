@@ -2,7 +2,7 @@
 AnalysisObjs2.py
 Refactored 05-05
 """
-from BB_PY import BB
+import BB
 
 import os
 import os.path as op

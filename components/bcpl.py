@@ -3,7 +3,7 @@ Functions necessary for running coupled MODFLOW/SWMM
 Brett Buzzanga, 2017
 """
 
-from BB_PY import BB
+import BB
 
 import os
 import time

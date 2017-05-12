@@ -49,7 +49,7 @@ To Do:
     Should probably move to updates function
 """
 
-from BB_PY import BB
+import BB
 from swmmPUT import *
 import bcpl
 import os

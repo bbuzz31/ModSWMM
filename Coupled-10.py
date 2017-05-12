@@ -35,7 +35,7 @@ Notes:
   Author : Brett Buzzanga
 
 """
-from BB_PY import BB
+import BB
 from components import bcpl, wncNWT, wncSWMM, swmmSOL as swmm
 import os
 import os.path as op

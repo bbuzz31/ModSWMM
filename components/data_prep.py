@@ -8,7 +8,7 @@ Updated: 2017-01-16, added mf_heads to table
 INCLUDES INSTRUCTIONS ON HOW TO MAKE TABLES; OUTFALLS MADE ENTIRELY HERE
 -- once this is done, modswmm proceeds to just use the tables
 '''
-from BB_PY import BB
+import BB
 import os
 import os.path as op
 import time
@@ -258,6 +258,50 @@ def mf_params(df_grid, df_KZ):
     # point here is just to add both grid and params into 1 dataframe
 
     return pd.concat([df_grid, df_KZ], axis=1)
+# ************************  SWMM_RAIN/CLIMATE   ****************************** #
+def format_data(path_file, write=True):
+        """
+        Format a rain (COOP) or climate (GHCND) raw data file for SWMM
+        Copy and paste the 'download' link into a text file:
+        https://www.ncdc.noaa.gov/cdo-web/datasets (precip hourly / normals daily)
+        see rain_climate.py for old functions
+        Eg: format_data(op.join(PATH_root, 'Data', 'rain_full_raw.csv'), write=True)
+        """
+        kind = op.basename(path_file).split('_')[0]
+        year = op.basename(path_file).split('_')[1]
+        raw = pd.read_csv (path_file)
+
+        if kind == 'rain':
+            # want station ID, date, and precip
+            df        = raw.loc[:, ['STATION', 'DATE', 'HPCP']]
+            # overwrite station ID
+            df.STATION = df.get_value(0, 'STATION').split(':')[1]
+            # convert to date time and format
+            df.DATE    = pd.to_datetime(df.DATE)
+            df.DATE    = df.DATE.apply(lambda x: datetime.strftime(x, '%Y %m %d %H %M'))
+            #print df
+            df.to_csv(op.join(op.dirname(path_file), '{}_{}.DAT'.format(kind, year)),
+                            sep=' ', float_format='%.2f', index=False, header=False,
+                            quoting=csv.QUOTE_NONE, escapechar=' ')
+
+        elif kind == 'climate':
+            # using headers and then skipping the first row raises copy warning
+            df = raw.loc[:, ['STATION', 'DATE', 'TMAX', 'TMIN', 'AWND']]
+            df.STATION = df.get_value(0, 'STATION')[-6:]
+            df.DATE =  pd.to_datetime(df.DATE, format='%Y%m%d')
+            df.DATE    =  df.DATE.apply(lambda x: datetime.strftime(x, '%Y %m %d'))
+
+        if write:
+            df.to_csv(op.join(op.dirname(path_file), '{}_{}.DAT'.format(kind, year)),
+                            sep=' ', float_format='%.2f', index=False, header=False,
+                            quoting=csv.QUOTE_NONE, escapechar=' ')
+        else:
+            print df.head(10)
+            try:
+                 df.HPCP.astype(float)
+                 print df.HPCP.sum() - 6.35 - 0.25 - 3.05 - 0.25 - 1.27
+            except:
+                print 'Using Climate data'
 # *********************************   WRITE  ********************************* #
 def write_all():
 

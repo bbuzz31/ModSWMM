@@ -24,7 +24,7 @@ Notes:
   Update: 2017-05-03
 """
 
-from BB_PY import BB
+import BB
 import os
 import os.path as op
 import shutil
