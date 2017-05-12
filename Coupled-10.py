@@ -36,7 +36,7 @@ Notes:
 
 """
 from BB_PY import BB
-from components import swmm, bcpl, wncNWT, wncSWMM
+from components import bcpl, wncNWT, wncSWMM, swmmSOL as swmm
 import os
 import os.path as op
 import shutil

@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 import flopy.utils.formattedfile as ff
-import swmm
+import swmmSOL as swmm
 
 def cell_num(row, col, n_cols=51, show=False):
     """
