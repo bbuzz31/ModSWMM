@@ -7,7 +7,7 @@ import os
 import os.path as op
 import numpy as np
 import pandas as pd
-import swmmtoolbox_BB as swmtbx
+import swmmtoolbox as swmtbx
 
 class fmt_base(object):
     """ Base class for formatting Pickled Model Output """
