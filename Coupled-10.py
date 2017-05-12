@@ -319,7 +319,7 @@ def main(Days, SLR, Coupled, V):
     start      = time.time()
     Child_dir  = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled',
                                     time.strftime('%b')+'_2', 'Child_{}'.format(SLR))
-    PATH_store = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-10')
+    PATH_store = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-11')
     Params     = _get_params(Days, SLR, Child_dir)
     name       = Params['MF']['name']
 
@@ -350,34 +350,34 @@ def main(Days, SLR, Coupled, V):
         ### write parameters to log
         if SLR == 0.0:
             _log(Child_dir, Params['MF']['name'], params=Params)
-        # _store_results(Child_dir, PATH_store, name)
+        _store_results(Child_dir, PATH_store, name)
 
 def main_help(args):
     KPERS, SLR, COUPLED, VERBOSE = args
     main(KPERS, SLR, COUPLED, VERBOSE)
 
 if __name__ == '__main__':
-    arguments = docopt(__doc__)
-    typecheck = Schema({'<kpers>'  : Use(int),  '--coupled' : Use(int),
-                       '--verbose' : Use(int)}, ignore_extra_keys=True)
-    args = typecheck.validate(arguments)
-    SLR  = np.linspace(0, 2.4, num=13, endpoint=True) if args['--coupled'] else [0.0]
-
-    #for all scenarios
-    SLR = [0.0, 1.0, 2.0]
-    # SLR = [0.0]
-    # zip up args into lists for pool workers
-    ARGS = zip([args['<kpers>']]*len(SLR), SLR, [args['--coupled']]*len(SLR),
-               [args['--verbose']]*len(SLR))# child_dirs)
-
-
-    # num of processes to do
-    pool = Pool(processes=len(SLR))
-    pool.map(main_help, ARGS)
+    # arguments = docopt(__doc__)
+    # typecheck = Schema({'<kpers>'  : Use(int),  '--coupled' : Use(int),
+    #                    '--verbose' : Use(int)}, ignore_extra_keys=True)
+    # args = typecheck.validate(arguments)
+    # SLR  = np.linspace(0, 2.4, num=13, endpoint=True) if args['--coupled'] else [0.0]
+    #
+    # #for all scenarios
+    # SLR = [0.0, 1.0, 2.0]
+    # # SLR = [0.0]
+    # # zip up args into lists for pool workers
+    # ARGS = zip([args['<kpers>']]*len(SLR), SLR, [args['--coupled']]*len(SLR),
+    #            [args['--verbose']]*len(SLR))# child_dirs)
+    #
+    #
+    # # num of processes to do
+    # pool = Pool(processes=len(SLR))
+    # pool.map(main_help, ARGS)
 
     # for debugging
     # main(args['<kpers>'], SLR[0], args['--coupled'], args['--verbose'])
 
     # make pickles
-    # path_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-10')
-    # call(['PickleRaw.py', path_result])
+    path_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-11')
+    call(['./components/PickleRaw.py', path_result])

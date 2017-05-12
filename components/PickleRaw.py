@@ -35,7 +35,7 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 
-import bcpl, PickleFmt, swmmtoolbox as swmtbx
+import bcpl, picklefmt, swmmtoolbox as swmtbx
 import flopy.utils.formattedfile as ff
 import flopy.utils.binaryfile as bf
 #
@@ -118,7 +118,7 @@ class pickle_swmm(pickle_base):
         slr_name  = op.basename(scenario)
         slr       = slr_name[4:7]
         out_file  = op.join(scenario, '{}.out'.format(slr_name))
-        sub_names = swmtbx.getnames(out_file,'subcatchment')
+        sub_names = [int(name) for name in swmtbx.listdetail(out_file,'subcatchment')]
         sys_mat   = np.zeros([len(self.ts_hr), len(sub_names)*len(varnames)])
 
         for i, sub in enumerate(sub_names):
@@ -141,7 +141,7 @@ class pickle_swmm(pickle_base):
         slr_name  = op.basename(scenario)
         slr       = slr_name[4:7]
         out_file  = op.join(scenario, '{}.out'.format(slr_name))
-        sub_names = swmtbx.getnames(out_file,'subcatchment')
+        sub_names = [int(name) for name in swmtbx.listdetail(out_file,'subcatchment')]
         sys_mat   = np.zeros([len(self.ts_hr), len(sub_names)*len(varnames)])
 
         for i, sub in enumerate(sub_names):
@@ -237,7 +237,7 @@ def _sub_var(args):
     slr_name  = op.basename(scenario)
     slr       = slr_name[4:7]
     out_file  = op.join(scenario, '{}.out'.format(slr_name))
-    sub_names = swmtbx.getnames(out_file,'subcatchment')
+    sub_names = [int(name) for name in swmtbx.listdetail(out_file,'subcatchment')]
     sys_mat   = np.zeros([len(ts), len(sub_names)*len(variables)])
 
     for i, sub in enumerate(sub_names):
@@ -285,7 +285,7 @@ if __name__ == '__main__':
                                [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
 
         print '\nFormatting Data ...\n'
-        PickleFmt.main(PATH_result)
+        picklefmt.main(PATH_result)
 
         end = time.time()
         print 'Pickles made in ~ {} min'.format(round((end-start)/60., 2))
