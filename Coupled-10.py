@@ -318,11 +318,12 @@ def _get_params(days, slr, path_root=False):
 def main(Days, SLR, Coupled, V):
     start      = time.time()
     Child_dir  = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled',
-                                    time.strftime('%b')+'_2', 'Child_{}'.format(SLR))
+                                    time.strftime('%b')+'_1', 'Child_{}'.format(SLR))
     PATH_store = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-11')
     Params     = _get_params(Days, SLR, Child_dir)
     Params['MF']['coupled'] = Coupled
-    Params['MF']['Verbose'] = V
+    Params['MF']['Verbose'] = True
+    Params['SWMM']['Verbose'] = True
     name       = Params['MF']['name']
 
     ### remove old control files, uzf files, create directories
@@ -331,7 +332,7 @@ def main(Days, SLR, Coupled, V):
 
     ### Create SWMM Input File
     wncNWT.main_SS(Child_dir, **Params['MF'])
-    wncSWMM.main(Child_dir, verbose=V, **Params['SWMM'])
+    wncSWMM.main(Child_dir, **Params['SWMM'])
 
     if Coupled:
         ### MF

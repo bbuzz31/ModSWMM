@@ -140,7 +140,7 @@ def mf_get_all(path_root, mf_step, **params):
                 linecache.clearcache()
                 if line_start < 4:
                     # print (row,col)
-                    theta_uzfb[row][col] = params.get('Por')
+                    theta_uzfb[row][col] = params.get('Por', 0.3)
                     head_fhd[row][col]   = arr_surf[row][col] - 0.05
                     looking = False
 
