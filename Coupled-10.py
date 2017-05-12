@@ -350,7 +350,7 @@ def main(Days, SLR, Coupled, V):
         ### write parameters to log
         if SLR == 0.0:
             _log(Child_dir, Params['MF']['name'], params=Params)
-        _store_results(Child_dir, PATH_store, name)
+        # _store_results(Child_dir, PATH_store, name)
 
 def main_help(args):
     KPERS, SLR, COUPLED, VERBOSE = args
