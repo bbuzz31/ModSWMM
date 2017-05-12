@@ -99,7 +99,7 @@ class pickle_swmm(pickle_base):
 
             colnames.extend(['{}_{}'.format(var_name, slr) for var_name in varnames])
             for j,v in enumerate(variables):
-                sys_mat[:, j+i*len(variables)] = swmtbx.extract_1d(out_file,
+                sys_mat[:, j+i*len(variables)] = swmtbx.extract_arr(out_file,
                                                  'system,{},{}'.format(v,v))
         swmm_sys = pd.DataFrame(sys_mat, index=self.ts_hr, columns=colnames)
         path_res = op.join(self.path_picks, 'swmm_sys.df')
@@ -123,7 +123,7 @@ class pickle_swmm(pickle_base):
 
         for i, sub in enumerate(sub_names):
             for j, var in enumerate(variables):
-                sys_mat[:, j+i*len(variables)] = swmtbx.extract_1d(out_file,
+                sys_mat[:, j+i*len(variables)] = swmtbx.extract_arr(out_file,
                                                 'subcatchment,{},{}'.format(sub,var))
 
         path_arr  = op.join(self.path_picks, 'swmm_heads_{}.npy'.format(slr))
@@ -146,7 +146,7 @@ class pickle_swmm(pickle_base):
 
         for i, sub in enumerate(sub_names):
             for j, var in enumerate(variables):
-                sys_mat[:, j+i*len(variables)] = swmtbx.extract_1d(out_file,
+                sys_mat[:, j+i*len(variables)] = swmtbx.extract_arr(out_file,
                                                 'subcatchment,{},{}'.format(sub,var))
 
         path_arr = op.join(self.path_picks, 'swmm_run_{}.npy'.format(slr))
@@ -242,7 +242,7 @@ def _sub_var(args):
 
     for i, sub in enumerate(sub_names):
         for j, var in enumerate(variables):
-            sys_mat[:, j+i*len(variables)] = swmtbx.extract_1d(out_file,
+            sys_mat[:, j+i*len(variables)] = swmtbx.extract_arr(out_file,
                                             'subcatchment,{},{}'.format(sub,var))
 
     path_arr = op.join(path_pickle, 'swmm_{}_{}.npy'.format(varname, slr))
