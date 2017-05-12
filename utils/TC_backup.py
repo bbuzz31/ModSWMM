@@ -23,7 +23,8 @@ def move(path_src):
     path_log     = op.join(path_src, 'SLR-0.0_{}'.format(date),
                                      'Coupled_{}.log'.format(date))
     path_dest    = op.join('/', 'Volumes', 'BB_Cap', 'Thesis_Backups', date)
-
+    if not op.isdir(path_dest):
+        os.makedirs(path_dest)
     try:
         shutil.copy(path_log, op.join(path_dest, op.basename(path_log)))
         print "Backed up Log"
@@ -34,7 +35,7 @@ def move(path_src):
         shutil.copy(op.join(op.dirname(path_src), 'README'), op.join(path_dest, 'README'))
         print 'README Overwritten'
     except:
-        pass
+        print 'README Not Updated'
 
     shutil.copytree(path_pickles, op.join(path_dest, 'Pickles'))
     print "Backed up Pickles"
