@@ -13,9 +13,5 @@ Dependencies:
 	
 	Python:
 
-Version 0: 2017-05-01
-    Function based codes.
-
-
-
+2017-05-01
 
