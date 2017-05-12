@@ -4,4 +4,4 @@ __date__        = '10.11.2016'
 
 __description__ = 'Modules for running coupled modflow/swmm model'
 
-__all__ = ['bcpl', 'swmm', 'swmmPUT', 'swmmtoolbox_BB', 'wncNWT', 'wncSWMM']
+__all__ = ['bcpl', 'swmmSOL', 'swmmPUT', 'swmmtoolbox', 'wncNWT', 'wncSWMM']

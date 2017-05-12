@@ -20,7 +20,7 @@ import matplotlib.gridspec as gridspec
 import flopy.utils.formattedfile as ff
 import flopy.utils.binaryfile as bf
 
-from components import bcpl, swmmtoolbox_BB as swmtbx
+from components import bcpl, swmmtoolbox as swmtbx
 
 class res_base(object):
     def __init__(self, path_result):

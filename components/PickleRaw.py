@@ -35,7 +35,7 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 
-import bcpl, PickleFmt, swmmtoolbox_BB as swmtbx
+import bcpl, PickleFmt, swmmtoolbox as swmtbx
 import flopy.utils.formattedfile as ff
 import flopy.utils.binaryfile as bf
 #
