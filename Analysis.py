@@ -285,12 +285,13 @@ class summary(res_base):
         return fig
 
     def uzf_runoff(self):
-        path_0 = op.join(self.path, 'SLR-0.0_05-08', 'SLR-0.0_05-08.
+        """ Not sure exactly what this means """
+        arr_uzf_run = self._load_uzf()[3]
+        df_uzf_run  = pd.DataFrame(index=self.ts_day)
+        for key, val in arr_uzf_run.items():
+             df_uzf_run['SLR: {}'.format(key)] = val.sum(2).sum(1)
 
-        pass
-
-
-
+        df_uzf_run.resample('MS').mean().plot(subplots=False, title='UZF Runoff')
 
     ### do this in ArcMap
     def plot_head_contours(self):
@@ -654,6 +655,7 @@ def make_plots():
     # summary_obj.plot_ts_sys_var()
     # summary_obj.plot_slr_sys_sums()
     # summary_obj.plot_ts_uzf_sums()
+    summary_obj.uzf_runoff()
     # summary_obj.plot_head_contours()
 
     # runoff
