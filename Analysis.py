@@ -3,12 +3,12 @@ AnalysisObjs2.py
 Refactored 05-05
 """
 import BB
-
 import os
 import os.path as op
 from datetime import datetime, timedelta
 import re
 import linecache
+from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
@@ -40,7 +40,9 @@ class res_base(object):
         self.fig_path   = op.join(self.path, 'Figures')
         self.slr_sh     = ['0.0', '1.0', '2.0']
         self.seasons    = ['Winter', 'Spring', 'Summer', 'Fall']
-        # to truncate time series to start at Dec 1, 2012
+        # to truncate time series to start at Dec 1, 2012; implement in pickling
+        self.st         = '2011-12-01-00'
+        self.end        = '2012-11-30-00'
         # self.ts_hr    = self.ts_hr[3696:]
         # self.ts_day   = self.ts_day[154:]
 
@@ -165,20 +167,18 @@ class res_base(object):
 
     def _load_uzf(self):
         """ Load Pickled UZF Arrays """
-        # position 0 is leakage, 1 is rch, 2 is et, 3 is hort+dunn run
-        list_uzf = []
+        # ordered dict helps with plotting
+        dict_uzf = OrderedDict()
         for var in ['surf_leak', 'uzf_rch', 'uzf_et', 'uzf_run']:
             pickle_files = [op.join(self.path_picks, pick_file) for pick_file in
                             os.listdir(self.path_picks) if pick_file.startswith(var)]
-            tmp_dict = {}
+            tmp_dict = OrderedDict()
             for leak_mat in pickle_files:
                 SLR = float(op.basename(leak_mat).split('_')[2][:-4])
                 tmp_dict[SLR] = np.load(leak_mat)
-
             # list of dictionary of scenario (0.0) : 74x51x549 matrix
-            list_uzf.append(tmp_dict)
-
-        return list_uzf
+            dict_uzf[var] = tmp_dict
+        return dict_uzf
 
     @staticmethod
     def fill_grid(ser):
@@ -208,7 +208,6 @@ class summary(res_base):
     """ Overall information """
     def __init__(self, path_results, row=0, col=2):
         res_base.__init__(self, path_results)
-        self.var_map        = {0: 'leak', 1 : 'rch', 2: 'et'}
         self.row, self.col  = row, col
         self.loc_1d         = bcpl.cell_num(self.row, self.col) + 10000
 
@@ -256,37 +255,51 @@ class summary(res_base):
 
     ### MF
     def plot_ts_uzf_sums(self):
-        """ Plot Sum of Recharge, ET, and Leakage at all locs, each Step """
-        print 'this should be a fill plot'
+        """
+        Plot Sum of Recharge, ET,  at all locs, each step, monthly mean
+        PLot Precipation
+        """
+        var_map  = OrderedDict([('uzf_rch','GW Recharge'), ('uzf_et', 'GW ET')])
+        dict_uzf = self._load_uzf()
 
-        list_uzf = self._load_uzf()
         df_sums = pd.DataFrame(index=self.ts_day)
-        for i, var in enumerate(list_uzf):
+        for name, arr in dict_uzf.items():
+            if not name in var_map:
+                continue
             for slr in self.slr:
-                mat_sum = var[slr].reshape(550,-1).sum(1)
-                df_sums['{}_{}'.format(self.var_map[i], slr)] = mat_sum
+                mat_sum = arr[slr].reshape(550,-1).sum(1)
+                df_sums['{}_{}'.format(var_map[name], slr)] = mat_sum
 
-        df_sums   = abs(df_sums)
-        fig, axes = plt.subplots(ncols=3 )
-        title     = fig.suptitle('Sums of UZF Variables by Type')
+        # truncate init conditions
+        df_sums   = abs(df_sums).loc[self.st:self.end, :]
+
+        fig, axes = plt.subplots(ncols=2, sharey=True)
+        title     = fig.suptitle('Monthly Budget Terms')
         axe       = axes.ravel()
 
-        for i, var in enumerate(self.var_map.values()):
+        for i, var in enumerate(var_map.values()):
             df_slr   = df_sums.filter(like=str(var))
-            df_mon   = df_slr.resample('M').mean().iloc[1:, :]
-            df_mon.plot.bar(ax=axe[i], title=var, grid=True, stacked=False)
-            # BB.fill_plot(df_mon, axe[i], title=var)
+            df_mon   = df_slr.resample('MS').mean()
+            df_mon.plot(ax=axe[i], title=var)
+            axe[i].set_ylabel('Volume for whole model, in cubic meters')
+            axe[i].set_ylim(10000, 200000)
+            # axe[i].set_xticklabels(df_mon.index.map(lambda t: t.strftime('%b')))
 
-            axe[i].set_xticklabels(df_mon.index.map(lambda t: t.strftime('%b')))
-        fig.autofmt_xdate()
-        fig.subplots_adjust(left=0.05, right=0.95, wspace=0.35)
-
+        # fig.autofmt_xdate()
+        fig.subplots_adjust(left=None, right=0.95, wspace=0.15)
         fig.set_label(title.get_text())
+
         return fig
+
+
+
+
+
+
 
     def uzf_runoff(self):
         """ Not sure exactly what this means """
-        arr_uzf_run = self._load_uzf()[3]
+        arr_uzf_run = self._load_uzf()['uzf_run']
         df_uzf_run  = pd.DataFrame(index=self.ts_day)
         for key, val in arr_uzf_run.items():
              df_uzf_run['SLR: {}'.format(key)] = val.sum(2).sum(1)
@@ -563,7 +576,8 @@ class methods(res_base):
         axe[0].legend(loc='lower left')#, bbox_to_anchor=(0.0, 1.075))
 
         # secondary plot of surface leakage
-        arr_leak = self._load_uzf()[0][self.slr[0]][:, self.row, self.col]
+        print 'may be a problem since changed _load_uzf return from list to dict'
+        arr_leak = self._load_uzf()['surf_leak'][self.slr[0]][:, self.row, self.col]
         df_leak  = pd.DataFrame({'Surface Leakage':arr_leak}, index=self.ts_day)
         # df_leak  = df_leak.loc['2011-12-01':, :]
         df_leak.plot(ax=axe[1], legend=False, title='Surface Leakage')
@@ -654,8 +668,7 @@ def make_plots():
     summary_obj = summary(PATH_result)
     # summary_obj.plot_ts_sys_var()
     # summary_obj.plot_slr_sys_sums()
-    # summary_obj.plot_ts_uzf_sums()
-    summary_obj.uzf_runoff()
+    summary_obj.plot_ts_uzf_sums()
     # summary_obj.plot_head_contours()
 
     # runoff

@@ -178,7 +178,7 @@ class pickle_uzf(pickle_base):
                 # save separately so can load separately and faster
                 path_res = op.join(self.path_picks, '{}_{}.npy'.format(varnames[i], slr))
                 np.save(path_res, sys_mat)
-                print 'Np array pickled to to: {}'.format(path_res)
+        print 'UZF arrays pickled to to: {}'.format(self.path_picks)
 
 class pickle_ext(pickle_base):
     def __init__(self, path_result):
@@ -219,7 +219,7 @@ def _ts_heads(args):
     heads    = hds.get_alldata(mflay=0)
     res_path = op.join(path_pickle, 'heads_{}.npy'.format(slr))
     np.save(res_path, heads)
-    print 'Np array pickled to to: {}'.format(res_path)
+    # print 'Np array pickled to to: {}'.format(res_path)
 
 def _sub_var(args):
     """
