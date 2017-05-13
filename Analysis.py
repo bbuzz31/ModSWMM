@@ -12,6 +12,7 @@ import linecache
 
 import numpy as np
 import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.dates  as mdates
 import matplotlib.colors as mcolors
@@ -39,7 +40,9 @@ class res_base(object):
         self.fig_path   = op.join(self.path, 'Figures')
         self.slr_sh     = ['0.0', '1.0', '2.0']
         self.seasons    = ['Winter', 'Spring', 'Summer', 'Fall']
-
+        # to truncate time series to start at Dec 1, 2012
+        # self.ts_hr    = self.ts_hr[3696:]
+        # self.ts_day   = self.ts_day[154:]
 
     def ts_all(self, param, loc=False, slr=0.0, dates=[0, -0], plot=False):
         """
@@ -154,7 +157,7 @@ class res_base(object):
         return dict_run
 
     def _load_fhd(self):
-        """ Load Pickled FHD Arrays """
+        """ Load Pickled FHD Arrays into a Dictionary of SLR: arr"""
         dict_fhd         = {}
         for slr in self.slr:
             fhd_pickle    = 'heads_{}.npy'.format(slr)
@@ -204,7 +207,7 @@ class res_base(object):
             return mat.reshape(74,51)
 
 class summary(res_base):
-    """ Overall information PLOT HEAD CONTOURS """
+    """ Overall information """
     def __init__(self, path_results, row=0, col=2):
         res_base.__init__(self, path_results)
         self.var_map        = {0: 'leak', 1 : 'rch', 2: 'et'}
@@ -217,7 +220,7 @@ class summary(res_base):
         """ Plot SWMM System Variables by Var """
         print 'this should be a fill plot, except for precip'
         sys_vars  = ['Infil', 'Runoff', 'Surf_Evap', 'Precip']
-        fig, axes = plt.subplots(2, 2, figsize=(16,9))
+        fig, axes = plt.subplots(2, 2)
         title     = fig.suptitle('SWMM System Variables')
         axe       = axes.ravel()
         df_mon    =(self.df_sys.loc['2011-12-01-00':'2012-11-30-00',:].resample('Q-NOV')
@@ -244,7 +247,7 @@ class summary(res_base):
             dict_slr[slr] = ser_sums.filter(like=str(slr)).values
         df_slr    = (pd.DataFrame(dict_slr, index=colnames).T
                                            .drop(['Vol_Stored', 'Flood', 'Precip', 'Pet'], 1))
-        fig, axes = plt.subplots(ncols=3,figsize=(16,9), sharex=True)
+        fig, axes = plt.subplots(ncols=3, sharex=True)
         title     = plt.suptitle('SWMM System Sums')
         df_slr.plot(ax=axes, subplots=True, grid=True)
         axes[1].set_xlabel('SLR (m)')
@@ -254,7 +257,6 @@ class summary(res_base):
         return fig
 
     ### MF
-    # make this a fill plot
     def plot_ts_uzf_sums(self):
         """ Plot Sum of Recharge, ET, and Leakage at all locs, each Step """
         print 'this should be a fill plot'
@@ -267,7 +269,7 @@ class summary(res_base):
                 df_sums['{}_{}'.format(self.var_map[i], slr)] = mat_sum
 
         df_sums   = abs(df_sums)
-        fig, axes = plt.subplots(ncols=3, figsize=(16,9))
+        fig, axes = plt.subplots(ncols=3 )
         title     = fig.suptitle('Sums of UZF Variables by Type')
         axe       = axes.ravel()
 
@@ -284,6 +286,23 @@ class summary(res_base):
         fig.set_label(title.get_text())
         return fig
 
+    ### do this in ArcMap
+    def plot_head_contours(self):
+        """ Avg (year) head for each SLR and change in head """
+        dict_heads = self._load_fhd()
+        fig, axes  = plt.subplots(ncols=3)
+        axe        = axes.ravel()
+        for i, (key, val) in enumerate(dict_heads.items()):
+            val     = val[154:, :, :] # start Dec 1, 2011
+            arr_avg = val.mean(axis=0)
+            # convert inactive to nan
+            arr_cln = np.where(arr_avg < -500, np.nan, arr_avg)
+            axe[i].contour(np.flipud(arr_cln))
+
+        return
+
+
+
 class runoff(res_base):
     def __init__(self, path_result):
         res_base.__init__(self, path_result)
@@ -297,7 +316,7 @@ class runoff(res_base):
         """ Plot area vs hours, curves of SLR, subplots of rates """
 
         area_bins   = np.linspace(1, 100, 11)
-        fig, axes   = plt.subplots(2, 2, True, True, figsize=(16,9))
+        fig, axes   = plt.subplots(2, 2, True, True)
         title       = fig.suptitle('percent area experiencing given runoff depth')
         axe         = axes.ravel()
         for i, vol in enumerate(self.vols):
@@ -318,7 +337,7 @@ class runoff(res_base):
     def plot_ts_sums(self):
         """ Time Series of Runoff Sums """
         df_run    = self.df_sys.filter(like='Runoff')
-        fig, axes = plt.subplots(ncols=2, figsize=(16,9))
+        fig, axes = plt.subplots(ncols=2)
         title     = fig.suptitle('Runoff vs Time - xlabels are off')
         axe       = axes.ravel()
         # get rid of first day
@@ -342,15 +361,14 @@ class runoff(res_base):
         chg_1     =  (med  - low) / med  * 100
         chg_2     =  (high - med) / high * 100
 
-        fig, axes = plt.subplots(ncols=2, figsize=(16, 9))
-        title     = fig.suptitle('Change in Total Runoff due to SLR', fontsize=14)
+        fig, axes = plt.subplots(ncols=2)
+        title     = fig.suptitle('Change in Total Runoff due to SLR')
         axe       = axes.ravel()
 
         for i, chg in enumerate([chg_1, chg_2]):
             titles = ['SLR: 1.0 (m) - SLR: 0.0 (m)', 'SLR: 2.0 (m) - SLR: 1.0 (m)']
             im = axe[i].imshow(chg, cmap=plt.cm.jet, vmin=0, vmax=30)
             axe[i].set(title=titles[i])
-            axe[i].title.set_size(11)
             axe[i].axis('off')
 
         fig.subplots_adjust(right=0.8)
@@ -373,13 +391,14 @@ class dtw(res_base):
     def plot_area_days(self):
         """ Plot area vs days, curves of SLR, subplots of DTW """
         area_bins   = np.linspace(0, 100, 11)
-        fig, axes   = plt.subplots(2, 2, True, figsize=(16,9))
+        fig, axes   = plt.subplots(2, 2, True)
         title       = fig.suptitle('percent area within given depth to water')
         axe         = axes.ravel()
 
         for i, dtw in enumerate(self.dtws):
             df_area_one = self.df_area.filter(like=str(dtw))
-            df_area_one.columns = ['SLR: {} m'.format(slr.split('_')[0]) for slr in df_area_one.columns]
+            df_area_one.columns = ['SLR: {} m'.format(slr.split('_')[0])
+                                        for slr in df_area_one.columns]
             df_hrs     = pd.DataFrame(index=area_bins, columns=df_area_one.columns)
             for area in area_bins:
                 df_hrs.loc[area, :] = (df_area_one>=area).sum()
@@ -410,8 +429,8 @@ class dtw(res_base):
                                     'change' : ser_chg})
 
             ### PLOT
-            fig, axes = plt.subplots(ncols=3, figsize=(16,9))
-            title     = fig.suptitle('Average DTW', fontsize=14)
+            fig, axes = plt.subplots(ncols=3)
+            title     = fig.suptitle('Average DTW')
             axe       = axes.ravel()
 
             # plot change
@@ -419,13 +438,11 @@ class dtw(res_base):
                                  vmin=-80, vmax=maxchg)
             axe[0].set(title='Change in DTW (cm): {} m to {} (m) SLR'.format(
                                           self.slr_sh[i], self.slr_sh[i+1]))
-            axe[0].title.set_size(10)
 
             # plot dtw
             im2 = axe[1].imshow(mat_high_dtw, cmap=plt.cm.jet_r,
                                      vmin=0, vmax=maxdtw)
             axe[1].set(title='DTW (cm) for SLR: {} (m) '.format(self.slr_sh[1]))
-            axe[1].title.set_size(10)
 
             # plot intersection
             df_mean.where(df_mean.change.notnull(), -500, inplace=True)
@@ -439,7 +456,6 @@ class dtw(res_base):
                                                         cmap=plt.cm.jet_r)
             axe[2].set(title='Locations with Change > {} (cm) and DTW < {}(cm)\nSLR: {} m'
                                         .format(maxchg, maxdtw, self.slr_sh[1]))
-            axe[2].title.set_size(10)
 
         return
 
@@ -462,7 +478,7 @@ class methods(res_base):
             list_of_param_mats.append(df_mf[param].values.reshape(74,51))
 
 
-        fig, axes = plt.subplots(ncols=len(params), figsize=(16,9))
+        fig, axes = plt.subplots(ncols=len(params))
         title     = fig.suptitle('SWMM Parameters')
         axe       = axes.ravel() if len(params) > 1 else [axes]
 
@@ -473,7 +489,6 @@ class methods(res_base):
             im = axe[i].imshow(mat_param1, cmap=plt.cm.jet)
 
             axe[i].set(title=params[i])
-            axe[i].title.set_size(11)
             # print ax[i].properties()
             # axe[i].axis('off')
 
@@ -490,7 +505,7 @@ class methods(res_base):
         for param in params:
             list_of_param_mats.append(self.fill_grid(self.df_swmm[param]))
 
-        fig, axes = plt.subplots(ncols=len(params), figsize=(16,9))
+        fig, axes = plt.subplots(ncols=len(params))
         title     = fig.suptitle('SWMM Parameters')
         axe       = axes.ravel() if len(params) > 1 else [axes]
 
@@ -501,7 +516,6 @@ class methods(res_base):
             im = axe[i].imshow(mat_param1, cmap=plt.cm.jet)
 
             axe[i].set(title=params[i])
-            axe[i].title.set_size(11)
             # print ax[i].properties()
             # axe[i].axis('off')
 
@@ -527,7 +541,7 @@ class methods(res_base):
         # df_heads = df_heads.loc['2011-12-01':, :]
 
         # fig, axes = plt.subplots(figsize=(16,9), nrows=2)
-        fig  = plt.figure(figsize=(16,9))
+        fig  = plt.figure()
         gs   = gridspec.GridSpec(2, 1,
                        width_ratios=[1],
                        height_ratios=[2,1]
@@ -555,12 +569,12 @@ class methods(res_base):
         """ Compare theta and water content from UZF gage; should be same  """
         print 'SHOULD NOT BE USING MONTHLY MEANS FOR THIS'
         # this loc only works for first row - still? (05-10??)
-        fig, axes   = plt.subplots(ncols=len(self.slr), figsize=(16,9), sharey=True)
+        fig, axes   = plt.subplots(ncols=len(self.slr), sharey=True)
         title       = fig.suptitle('UZF Water Content vs SWMM Theta \n Loc: {}'
                                                          .format(self.loc_1d))
         axe         = axes.ravel()
 
-        fig2, axes2 = plt.subplots(ncols=len(self.slr), figsize=(16,9), sharey=True)
+        fig2, axes2 = plt.subplots(ncols=len(self.slr), sharey=True)
         title2      = fig2.suptitle('Change in UZF vs SMWM Soil Water \n Loc: {}'.format(self.loc_1d))
         axe2        = axes2.ravel()
 
@@ -596,34 +610,43 @@ class sensitivity(res_base):
     """ Sums? for sensitivity analysis """
     pass
 
+def rcParams():
+    matplotlib.rcParams['figure.figsize'] = (16, 9)
+    matplotlib.rcParams['figure.titlesize'] = 14
+    matplotlib.rcParams['axes.titlesize'] = 11
+
 def make_plots():
     PATH_stor   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results')
     PATH_result = ('{}_05-08').format(PATH_stor)
+    rcParams()
 
-    ## summary
+    # summary
     summary_obj = summary(PATH_result)
-    # summary_obj.plot_ts_sys_var()
-    # summary_obj.plot_slr_sys_sums()
+    summary_obj.plot_ts_sys_var()
+    summary_obj.plot_slr_sys_sums()
     summary_obj.plot_ts_uzf_sums()
-    #
-    # ## runoff
+    summary_obj.plot_head_contours()
+
+    # runoff
     runoff_obj = runoff(PATH_result)
-    # runoff_obj.plot_area_vol()
-    # runoff_obj.plot_ts_sums()
-    # runoff_obj.plot_2d_chg_slr()
-    #
-    # ## dtw
+    runoff_obj.plot_area_vol()
+    runoff_obj.plot_ts_sums()
+    runoff_obj.plot_2d_chg_slr()
+
+    ## dtw
     dtw_obj    = dtw(PATH_result)
-    # dtw_obj.plot_area_days()
-    # dtw_obj.plot_interesting()
-    #
-    # ## methods
+    dtw_obj.plot_area_days()
+    dtw_obj.plot_interesting()
+
+    ## methods
     methods_obj = methods(PATH_result)
-    # methods_obj.plot_param_mf()
-    # methods_obj.plot_param_swmm()
-    # methods_obj.plot_heads_1loc()
-    # methods_obj.plot_theta_wc()
+    methods_obj.plot_param_mf()
+    methods_obj.plot_param_swmm()
+    methods_obj.plot_heads_1loc()
+    methods_obj.plot_theta_wc()
 
     plt.show()
+
+
 
 make_plots()
