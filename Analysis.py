@@ -301,8 +301,6 @@ class summary(res_base):
 
         return
 
-
-
 class runoff(res_base):
     def __init__(self, path_result):
         res_base.__init__(self, path_result)
@@ -608,12 +606,37 @@ class methods(res_base):
 
 class sensitivity(res_base):
     """ Sums? for sensitivity analysis """
-    pass
+    def __init__(self, path_result):
+        super(sensitivity, self).__init__(path_result)
+
+    def ss_vs_trans(self):
+        """
+        Compare Heads of Steady State vs Annual Mean of Transient
+        Probably won't report this; doesn't really say anything - SS = 10000 yrs)
+        """
+        # steady state heads at time 0
+        heads0    = self._load_fhd()[0.0]
+        ss_heads  = heads0[0, :, :]
+        # truncate transient heads to year starting on Dec 1, 2011
+        yr_heads  = heads0[154:-30, :, :].mean(axis=0)
+        # convert inactive to nan
+        avg_heads = np.where(yr_heads < -500, np.nan, yr_heads)
+        ss_heads  = np.where(ss_heads < -500, np.nan, ss_heads)
+
+        cmp_heads = avg_heads - ss_heads
+
+        # note the length is 1459 + 91 CHD cells
+        print pd.DataFrame({'Head_Chg' : cmp_heads.reshape(-1)}).dropna().describe()
+        fig, axes = plt.subplots()
+        title     = fig.suptitle ('Yearly Average Transient vs SS Solution')
+        im        = axes.imshow(cmp_heads, cmap=plt.cm.jet)
+        fig.colorbar(im)
+
 
 def rcParams():
-    matplotlib.rcParams['figure.figsize'] = (16, 9)
+    matplotlib.rcParams['figure.figsize']   = (16, 9)
     matplotlib.rcParams['figure.titlesize'] = 14
-    matplotlib.rcParams['axes.titlesize'] = 11
+    matplotlib.rcParams['axes.titlesize']   = 11
 
 def make_plots():
     PATH_stor   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results')
@@ -622,28 +645,32 @@ def make_plots():
 
     # summary
     summary_obj = summary(PATH_result)
-    summary_obj.plot_ts_sys_var()
-    summary_obj.plot_slr_sys_sums()
-    summary_obj.plot_ts_uzf_sums()
-    summary_obj.plot_head_contours()
+    # summary_obj.plot_ts_sys_var()
+    # summary_obj.plot_slr_sys_sums()
+    # summary_obj.plot_ts_uzf_sums()
+    # summary_obj.plot_head_contours()
 
     # runoff
     runoff_obj = runoff(PATH_result)
-    runoff_obj.plot_area_vol()
-    runoff_obj.plot_ts_sums()
-    runoff_obj.plot_2d_chg_slr()
+    # runoff_obj.plot_area_vol()
+    # runoff_obj.plot_ts_sums()
+    # runoff_obj.plot_2d_chg_slr()
 
     ## dtw
     dtw_obj    = dtw(PATH_result)
-    dtw_obj.plot_area_days()
-    dtw_obj.plot_interesting()
+    # dtw_obj.plot_area_days()
+    # dtw_obj.plot_interesting()
 
     ## methods
     methods_obj = methods(PATH_result)
-    methods_obj.plot_param_mf()
-    methods_obj.plot_param_swmm()
-    methods_obj.plot_heads_1loc()
-    methods_obj.plot_theta_wc()
+    # methods_obj.plot_param_mf()
+    # methods_obj.plot_param_swmm()
+    # methods_obj.plot_heads_1loc()
+    # methods_obj.plot_theta_wc()
+
+    ## sensitivity
+    sensit_obj  = sensitivity(PATH_result)
+    sensit_obj.ss_vs_trans()
 
     plt.show()
 
