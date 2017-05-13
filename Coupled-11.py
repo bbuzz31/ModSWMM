@@ -12,11 +12,11 @@ import numpy as np
 import pandas as pd
 
 from subprocess import call
-
+from multiprocessing import Pool
 
 class InitSim(object):
     """ booking functions: _fmt, _debug, _log, _store_results """
-    def __init__(self, days=5, slr=0.0, ext=''):
+    def __init__(self, slr, days=5, ext=''):
         self.days       = days
         self.slr        = slr
         self.slr_name   = 'SLR-{}_{}'.format(self.slr, time.strftime('%m-%d'))
@@ -123,9 +123,9 @@ class InitSim(object):
 
 class RunSim(InitSim):
     """ Run Coupled MODSWMM Simulation """
-    def __init__(self):
-        InitSim.__init__(self)
-        _ = self.init()
+    def __init__(self, slr):
+        InitSim.__init__(self, slr)
+        # _ = self.init()
         self.swmm_steps = 24
         self.df_subs    = pd.read_csv(op.join(self.path_data, 'SWMM_subs.csv'),
                                                              index_col='Zone')
@@ -136,17 +136,18 @@ class RunSim(InitSim):
         os.chdir(self.path_child)
 
         ### Run
-        wncNWT.main_TRS(self.path_child, **self.mf_parms)
-        self.run_coupled()
+        # self.run_coupled()
 
     def run_coupled(self):
         """ Run MF and SWMM together """
+        ## start MODFLOW
+        wncNWT.main_TRS(self.path_child, **self.mf_parms)
+
         time.sleep(1) # simply to let modflow finish printing to screen first
         STEPS_mf = self.days+1
         path_root = self.path_child
         v  = self.swmm_parms.get('Verbose', 4)
         slr_name  = self.swmm_parms.get('name')
-
 
         # storage and outfalls within study area  -- ONE INDEXED
         sub_ids      = self.df_subs.index.tolist()
@@ -240,15 +241,12 @@ class RunSim(InitSim):
 
 class FinishSim(InitSim):
     """ Write Log, Move to External HD, Write Pickles, Backup Pickles """
-    def __init__(self):
-        InitSim.__init__(self)
+    def __init__(self, slr):
+        InitSim.__init__(self, slr)
         self.cur_run = '{}'.format(self.slr_name)
         self.date    = self.slr_name.split('_')[1]
         self.end     = time.time()
         self.elapsed = round((self.end - self.start)/60., 2)
-        self.log()
-        self.store_results()
-        self.pickles()
 
     def log(self):
         """ Write Elapsed time and Parameters to Log File """
@@ -388,5 +386,24 @@ class FinishSim(InitSim):
 # #     # path_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-10')
 # #     # call(['./components/PickleRaw.py', path_result])
 
-RunSim()
-FinishSim()
+
+
+
+def main(slr):
+    """ Run MODSWMM """
+    InitSim(slr).init()
+    #
+    RunSim(slr).run_coupled()
+    #
+    FinishSim(slr).log()
+    FinishSim(slr).store_results()
+    # FinishSim(slr).pickles()
+
+
+if __name__ == '__main__':
+
+    # num of processes to do
+    SLR = [0.0, 1.0, 2.0]
+    pool = Pool(processes=len(SLR))
+    pool.map(main, SLR)
+    # main(SLR[0])

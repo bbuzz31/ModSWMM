@@ -64,7 +64,7 @@ class WNC_Base(object):
 
         if self.params['coupled']:
             self.mf = flomf.Modflow(MODEL, exe_name=op.join(path_exe, 'NWT_BB'),
-                                        version='mfnwt', silent=False, verbose=True,
+                                        version='mfnwt', silent=False, verbose=False,
                                   external_path=op.join(self.path, 'MF', 'ext'))
         else:
             self.mf = flomf.Modflow(MODEL, exe_name=op.join(path_exe, 'mfnwt'),
