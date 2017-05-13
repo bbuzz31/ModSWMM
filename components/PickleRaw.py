@@ -160,8 +160,8 @@ class pickle_uzf(pickle_base):
         """
         Make 3d numpy arrays of shape (74*51*549)
         """
-        varnames      = ['surf_leak', 'uzf_rch', 'uzf_et']
-        variables     = ['SURFACE LEAKAGE', 'UZF RECHARGE', 'GW ET']
+        varnames      = ['surf_leak', 'uzf_rch', 'uzf_et', 'uzf_run']
+        variables     = ['SURFACE LEAKAGE', 'UZF RECHARGE', 'GW ET', 'HORT+DUNN']
         for scenario in self.scenarios:
             slr_name  = op.basename(scenario)
             slr       = slr_name[4:7]
@@ -172,7 +172,6 @@ class pickle_uzf(pickle_base):
                 uzfobj = bf.CellBudgetFile(uzf_file, precision='double')
             for i, variable in enumerate(variables):
                 uzf_data      = uzfobj.get_data(text=variable)
-
                 sys_mat       = np.zeros([len(self.ts_day), 74, 51])
                 for j in range(len(self.ts_day)):
                     sys_mat[j,:,:] = uzf_data[j]
@@ -255,7 +254,7 @@ def main(path_result):
     pickle_ext(path_result).ts_sums()
     return swmm_obj
 
-if __name__ == '__main__':
+ if __name__ == '__main__':
     start       = time.time()
     arguments   = docopt(__doc__)
     typecheck   = Schema({'PATH' : os.path.exists}, ignore_extra_keys=True)

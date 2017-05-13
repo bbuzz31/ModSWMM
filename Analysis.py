@@ -70,9 +70,7 @@ class res_base(object):
                      'head'   : ['subcatchment,', ',6', 'm'],
                      'soil'   : ['subcatchment,', ',7', 'theta'],
                      'gwout'  : ['subcatchment,', ',5', '??', '6?'],
-
                      'pet'    : ['subcatchment,', '', 'mm/hr?', ',14'],
-
                     }
         #swmtbx.listdetail(out_file, 'link')
         if loc:
@@ -167,9 +165,9 @@ class res_base(object):
 
     def _load_uzf(self):
         """ Load Pickled UZF Arrays """
-        # position 0 is leakage, 1 is rch, 2 is et
+        # position 0 is leakage, 1 is rch, 2 is et, 3 is hort+dunn run
         list_uzf = []
-        for var in ['surf_leak', 'uzf_rch', 'uzf_et']:
+        for var in ['surf_leak', 'uzf_rch', 'uzf_et', 'uzf_run']:
             pickle_files = [op.join(self.path_picks, pick_file) for pick_file in
                             os.listdir(self.path_picks) if pick_file.startswith(var)]
             tmp_dict = {}
@@ -285,6 +283,14 @@ class summary(res_base):
 
         fig.set_label(title.get_text())
         return fig
+
+    def uzf_runoff(self):
+        path_0 = op.join(self.path, 'SLR-0.0_05-08', 'SLR-0.0_05-08.
+
+        pass
+
+
+
 
     ### do this in ArcMap
     def plot_head_contours(self):
@@ -670,7 +676,7 @@ def make_plots():
 
     ## sensitivity
     sensit_obj  = sensitivity(PATH_result)
-    sensit_obj.ss_vs_trans()
+    # sensit_obj.ss_vs_trans()
 
     plt.show()
 
