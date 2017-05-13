@@ -65,7 +65,7 @@ class InitSim(object):
         self.path_child = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled',
                                 time.strftime('%b')+ext, 'Child_{}'.format(slr))
         self.path_data  = op.join(self.path_child, 'Data')
-        self.path_res   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-11')
+        self.path_res   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-12')
         self.start      = time.time()
 
     def mf_params(self):
@@ -353,8 +353,8 @@ class FinishSim(InitSim):
     def pickles(self):
         call(['PickleRaw.py', self.path_res]) # DONT use rel path (os.getcwd())
 
-        # print '\nFormatting Data ...\n'
-        # picklefmt.main(PATH_result)
+        print '\nFormatting Data ...\n'
+        picklefmt.main(PATH_result)
 
         print '\nBacking up to Time Capsule ...\n'
         call(['TC_backup.py', self.path_res])
@@ -368,13 +368,13 @@ def main(args):
     #
     FinishSim(slr, days).log()
     FinishSim(slr, days).store_results()
-    FinishSim(slr, days).pickles()
+    # FinishSim(slr, days).pickles()
 
 if __name__ == '__main__':
     arguments = docopt(__doc__)
     typecheck = Schema({'KPERS'   : Use(int),  '--coupled' : Use(int),
                         '--debug' : Use(int)}, ignore_extra_keys=True)
-
+    # this is the test                        
     args = typecheck.validate(arguments)
     SLR = [0.0, 1.0, 2.0]
 
