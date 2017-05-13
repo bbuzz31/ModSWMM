@@ -155,7 +155,7 @@ class WNC_SWMM_Inps(WNC_Base):
                             stors, conduits, inflow, geom, report, xynodes, xypolys]
 
     def swmm_write(self):
-        '''
+        """
         Purpose:
             Write the swmm.inp file.
         Arguments:
@@ -165,11 +165,7 @@ class WNC_SWMM_Inps(WNC_Base):
                         ACTUAL amount of days (1 is be added automatically for SWMM)
                         One less than coupled step.
                         Equal to MF Kper (check). Set
-        '''
-        # form = '%m/%d/%Y'
-        # start = datetime.strptime(params.get('START_DATE', '06/30/2011'), form)
-        # end   = datetime.strptime(params.get('END_DATE', '12/31/2012'), form)
-        # swmm_days = (end-start-timedelta(days=1))
+        """
         to_write  = self.swmm_objs()
         swmm_days = self.params.get('days', -1)
 

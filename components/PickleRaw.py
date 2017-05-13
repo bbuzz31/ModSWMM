@@ -264,10 +264,10 @@ if __name__ == '__main__':
     args = {k:v for k, v in arguments.iteritems() if v}
 
     ### 1 CPU
-    swmm_obj = main(PATH_result)
+    swmm_obj              = main(PATH_result)
     scenarios, path_picks = swmm_obj.scenarios, swmm_obj.path_picks
     ts_hr                 = swmm_obj.ts_hr
-
+    
     ### Multiprocessing
     if len(args) == 1:
         print 'Pickling FHD heads to: {}'.format(path_picks)

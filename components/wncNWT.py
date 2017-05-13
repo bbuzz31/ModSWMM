@@ -51,27 +51,20 @@ class WNC_Base(object):
 
     def load_data(self):
         """ load data from csvs """
-        # data_mf        = {}
-        # data_mf['mf']  = pd.read_csv(op.join(path_root, 'Data', 'MF_GRID.csv'),
-        #                              index_col='FID')
         self.df_mf  = pd.read_csv(op.join(self.path_data, 'MF_GRID.csv'), index_col='FID')
         self.df_chd = pd.read_csv(op.join(self.path_data, 'MF_CHD.csv'), index_col='Zone')
         # for uzf gages
         self.df_subs = pd.read_csv(op.join(self.path_data, 'SWMM_subs.csv'), index_col='Zone')
 
-
-        # data_mf['chd'] = pd.read_csv(op.join(path_root, 'Data', 'MF_CHD.csv'),
-        #                              index_col='Zone')
-        # for uzf gages
-        # data_mf['subs'] =
-
     def init_mf(self):
+        """ Initialize MODFLOW object """
         NAME_mf  = '{}'.format(self.params.get('name', 'MISSING'))
         MODEL    = op.join(self.path, 'MF', NAME_mf)
         path_exe = self.params.get('path_exe', op.join('/', 'opt', 'local', 'bin'))
+
         if self.params['coupled']:
             self.mf = flomf.Modflow(MODEL, exe_name=op.join(path_exe, 'NWT_BB'),
-                                        version='mfnwt', silent=True, verbose=False,
+                                        version='mfnwt', silent=False, verbose=True,
                                   external_path=op.join(self.path, 'MF', 'ext'))
         else:
             self.mf = flomf.Modflow(MODEL, exe_name=op.join(path_exe, 'mfnwt'),
