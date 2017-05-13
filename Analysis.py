@@ -26,7 +26,7 @@ class res_base(object):
         self.path_picks = op.join(path_result, 'Pickles')
         self.path_data  = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC',
                                                            'Coupled', 'Data')
-
+        self.path_fig   = op.join(self.path, 'Figures')
         self.df_sys     = pd.read_pickle(op.join(self.path_picks, 'swmm_sys.df'))#.loc['2012-01-01-00':, :]
         self.slr        = BB.uniq([float(slr.rsplit('_', 1)[1]) for slr
                                                         in self.df_sys.columns])
@@ -37,7 +37,6 @@ class res_base(object):
         self.df_swmm    = pd.read_csv(op.join(self.path_data, 'SWMM_subs.csv'),
                                                            index_col='Zone')
         self.subs       = self.df_swmm.index.values
-        self.fig_path   = op.join(self.path, 'Figures')
         self.slr_sh     = ['0.0', '1.0', '2.0']
         self.seasons    = ['Winter', 'Spring', 'Summer', 'Fall']
         # to truncate time series to start at Dec 1, 2012; implement in pickling
@@ -180,6 +179,16 @@ class res_base(object):
             dict_uzf[var] = tmp_dict
         return dict_uzf
 
+    def save_cur_fig(self):
+        """ Saves the current fig """
+        try:
+            curfig = plt.gcf()
+        except:
+            raise ValueError('No Current Figure Available')
+        if not op.isdir(self.path_fig):
+            os.makedirs(self.path_fig)
+        curfig.savefig(op.join(self.path_fig, curfig.get_label()+'.png'))
+
     @staticmethod
     def fill_grid(ser):
         """ Create WNC grid from a series with 1 indexed zones and values """
@@ -262,7 +271,8 @@ class summary(res_base):
         var_map  = OrderedDict([('uzf_rch','GW Recharge'), ('uzf_et', 'GW ET')])
         dict_uzf = self._load_uzf()
 
-        df_sums = pd.DataFrame(index=self.ts_day)
+        df_sums  = pd.DataFrame({'Precip':self.df_sys['Precip_{}'.format(
+                                        self.slr[0])]}).resample('D').sum()
         for name, arr in dict_uzf.items():
             if not name in var_map:
                 continue
@@ -270,32 +280,40 @@ class summary(res_base):
                 mat_sum = arr[slr].reshape(550,-1).sum(1)
                 df_sums['{}_{}'.format(var_map[name], slr)] = mat_sum
 
-        # truncate init conditions
-        df_sums   = abs(df_sums).loc[self.st:self.end, :]
+        # truncate init conditions and resample to monthly
+        df_mon = abs(df_sums).loc[self.st:self.end, :].resample('MS').mean()
 
-        fig, axes = plt.subplots(ncols=2, sharey=True)
-        title     = fig.suptitle('Monthly Budget Terms')
-        axe       = axes.ravel()
+        fig    = plt.figure()
+        axe    = []
+        gs     = gridspec.GridSpec(3, 2)
+        axe.append(fig.add_subplot(gs[:2, 0]))
+        axe.append(fig.add_subplot(gs[:2, 1]))
+        axe.append(fig.add_subplot(gs[2, :]))
 
+        title  = fig.suptitle('Monthly Averages')
         for i, var in enumerate(var_map.values()):
-            df_slr   = df_sums.filter(like=str(var))
-            df_mon   = df_slr.resample('MS').mean()
-            df_mon.plot(ax=axe[i], title=var)
-            axe[i].set_ylabel('Volume for whole model, in cubic meters')
-            axe[i].set_ylim(10000, 200000)
-            # axe[i].set_xticklabels(df_mon.index.map(lambda t: t.strftime('%b')))
+            df_slr   = df_mon.filter(like=str(var))
+            df_slr.plot(ax=axe[i], title=var, sharey=True)
 
+        df_mon.Precip.plot(ax=axe[-1], title='Precip')
+
+        ### Y AXES
+        axe[0].set_ylabel('Volume for whole model, in cubic meters')
+        axe[0].set_ylim(10000, 200000)
+        axe[2].set_ylabel('Depth, in millimeters', labelpad=25)
+
+        ### X AXES --- todo
+        # axe[i].set_xticklabels(df_mon.index.map(lambda t: t.strftime('%b')))
         # fig.autofmt_xdate()
-        fig.subplots_adjust(left=None, right=0.95, wspace=0.15)
+
+        ### ADJUST
+        # fig.subplots_adjust(left=None, right=0.95, wspace=0.15)
+        gs.update(bottom=0.075, hspace=0.6, wspace=0.15)
+        # axe[2].set_labelpad(5)
+
         fig.set_label(title.get_text())
 
         return fig
-
-
-
-
-
-
 
     def uzf_runoff(self):
         """ Not sure exactly what this means """
@@ -576,7 +594,6 @@ class methods(res_base):
         axe[0].legend(loc='lower left')#, bbox_to_anchor=(0.0, 1.075))
 
         # secondary plot of surface leakage
-        print 'may be a problem since changed _load_uzf return from list to dict'
         arr_leak = self._load_uzf()['surf_leak'][self.slr[0]][:, self.row, self.col]
         df_leak  = pd.DataFrame({'Surface Leakage':arr_leak}, index=self.ts_day)
         # df_leak  = df_leak.loc['2011-12-01':, :]
@@ -654,15 +671,21 @@ class sensitivity(res_base):
         fig.colorbar(im)
 
 
-def rcParams():
+def rc_params():
     matplotlib.rcParams['figure.figsize']   = (16, 9)
     matplotlib.rcParams['figure.titlesize'] = 14
     matplotlib.rcParams['axes.titlesize']   = 11
+    matplotlib.rcParams['axes.labelsize']   = 11
+    matplotlib.rcParams['savefig.dpi']      = 100
+    # matplotlib.rcParams['axes.labelweight'] = 'bold'
+    for param in matplotlib.rcParams.keys():
+        # print param
+        pass
 
 def make_plots():
     PATH_stor   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results')
     PATH_result = ('{}_05-08').format(PATH_stor)
-    rcParams()
+    rc_params()
 
     # summary
     summary_obj = summary(PATH_result)
@@ -670,6 +693,7 @@ def make_plots():
     # summary_obj.plot_slr_sys_sums()
     summary_obj.plot_ts_uzf_sums()
     # summary_obj.plot_head_contours()
+    summary_obj.save_cur_fig()
 
     # runoff
     runoff_obj = runoff(PATH_result)
@@ -693,8 +717,9 @@ def make_plots():
     sensit_obj  = sensitivity(PATH_result)
     # sensit_obj.ss_vs_trans()
 
+    # print plt.get_figlabels()
     plt.show()
 
 
-
+plt.style.use('seaborn')
 make_plots()
