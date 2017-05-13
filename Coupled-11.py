@@ -1,3 +1,40 @@
+#!/usr/bin/env python
+"""
+Run SWMM and MODFLOW2005 sequentially
+
+Usage:
+  Coupled-11.py KPERS [options]
+
+Examples:
+  Change **params dictionary within script.
+  Run a year coupled simulation
+  ./Coupled-11.py 550
+
+Arguments:
+  kpers       Total number of MODFLOW Steps / SWMM Days
+
+Options:
+  -c, --coupled=BOOL  Run a Coupled Simulation | SWMM input file    [default: 1]
+  -d, --debug=BOOL    Run a Coupled Sim for 0.0 only, dont move dir [default: 0]
+  -h, --help          Print this message
+
+Purpose:
+    Create SWMM Input or
+    Run MODFLOW and SWMM, sequentially
+
+Notes:
+  ** Set SLR runs, parameters and path(if necessary) within script **
+  If --coupled is false only creates SWMM inp
+  Data created with data_prep.py
+
+  Area   : West Neck Creek, Virginia Beach
+  Created: 2017-1-15
+  Updated: 2017-05-12
+  Author : Brett Buzzanga
+
+"""
+
+from components import wncNWT, wncSWMM, swmm, bcpl, picklefmt
 import BB
 import os
 import os.path as op
@@ -6,22 +43,23 @@ from datetime import datetime, timedelta
 from collections import OrderedDict
 import re
 import shutil
-
-from components import wncNWT, wncSWMM, swmm, bcpl
 import numpy as np
 import pandas as pd
 
 from subprocess import call
 from multiprocessing import Pool
 
+from docopt import docopt
+from schema import Schema, Use, Or
+
 class InitSim(object):
     """ booking functions: _fmt, _debug, _log, _store_results """
-    def __init__(self, slr, days=5, ext=''):
-        self.days       = days
+    def __init__(self, slr, days, ext=''):
         self.slr        = slr
-        self.slr_name   = 'SLR-{}_{}'.format(self.slr, time.strftime('%m-%d'))
-        self.coupled    = True
+        self.days       = days
         self.verbose    = 4
+        self.coupled    = True
+        self.slr_name   = 'SLR-{}_{}'.format(self.slr, time.strftime('%m-%d'))
         self.mf_parms   = self.mf_params()
         self.swmm_parms = self.swmm_params()
         self.path_child = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled',
@@ -123,9 +161,8 @@ class InitSim(object):
 
 class RunSim(InitSim):
     """ Run Coupled MODSWMM Simulation """
-    def __init__(self, slr):
-        InitSim.__init__(self, slr)
-        # _ = self.init()
+    def __init__(self, slr, days):
+        super(RunSim, self).__init__(slr, days)
         self.swmm_steps = 24
         self.df_subs    = pd.read_csv(op.join(self.path_data, 'SWMM_subs.csv'),
                                                              index_col='Zone')
@@ -134,9 +171,6 @@ class RunSim(InitSim):
 
         self.stors      = [11965, 11966, 11970, 12022]
         os.chdir(self.path_child)
-
-        ### Run
-        # self.run_coupled()
 
     def run_coupled(self):
         """ Run MF and SWMM together """
@@ -241,8 +275,8 @@ class RunSim(InitSim):
 
 class FinishSim(InitSim):
     """ Write Log, Move to External HD, Write Pickles, Backup Pickles """
-    def __init__(self, slr):
-        InitSim.__init__(self, slr)
+    def __init__(self, slr, days):
+        super(FinishSim, self).__init__(slr, days)
         self.cur_run = '{}'.format(self.slr_name)
         self.date    = self.slr_name.split('_')[1]
         self.end     = time.time()
@@ -319,91 +353,42 @@ class FinishSim(InitSim):
     def pickles(self):
         call(['PickleRaw.py', self.path_res]) # DONT use rel path (os.getcwd())
 
-# def main(Days, SLR, Coupled, V):
-#     start      = time.time()
-#     Child_dir  = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled',
-#                                     time.strftime('%b')+'_1', 'Child_{}'.format(SLR))
-#     PATH_store = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-11')
-#     Params     = _get_params(Days, SLR, Child_dir)
-#     Params['MF']['coupled'] = Coupled
-#     Params['MF']['Verbose'] = True
-#     Params['SWMM']['Verbose'] = True
-#     name       = Params['MF']['name']
-#
-#     ### remove old control files, uzf files, create directories
-#     _fmt(Child_dir, name, uzfb=True)
-#     os.chdir(Child_dir)
-#
-#     ### Create SWMM Input File
-#     wncNWT.main_SS(Child_dir, **Params['MF'])
-#     wncSWMM.main(Child_dir, **Params['SWMM'])
-#
-#     if Coupled:
-#         ### MF
-#         wncNWT.main_TRS(Child_dir, **Params['MF'])
-#         ### SWMM
-#         _run_coupled(Days+1, STEPS_swmm=24, slr_name=name, path_root=Child_dir, verbose=V, **Params['SWMM'])
-#
-#     End = time.time()
-#     Elapsed = End-start
-#     # write elapsed to log
-#     _log(Child_dir, name, elapsed=Elapsed)
-#
-#     # move current run to Results dir
-#     if Coupled:
-#         ### write parameters to log
-#         if SLR == 0.0:
-#             _log(Child_dir, Params['MF']['name'], params=Params)
-#         # _store_results(Child_dir, PATH_store, name)
-#
-# # def main_help(args):
-# #     KPERS, SLR, COUPLED, VERBOSE = args
-# #     main(KPERS, SLR, COUPLED, VERBOSE)
-# #
-# # if __name__ == '__main__':
-# #     arguments = docopt(__doc__)
-# #     typecheck = Schema({'<kpers>'  : Use(int),  '--coupled' : Use(int),
-# #                        '--verbose' : Use(int)}, ignore_extra_keys=True)
-# #     args = typecheck.validate(arguments)
-# #     SLR  = np.linspace(0, 2.4, num=13, endpoint=True) if args['--coupled'] else [0.0]
-# #
-# #     #for all scenarios
-# #     # SLR = [0.0, 1.0, 2.0]
-# #     SLR = [0.0]
-# #     # zip up args into lists for pool workers
-# #     ARGS = zip([args['<kpers>']]*len(SLR), SLR, [args['--coupled']]*len(SLR),
-# #                [args['--verbose']]*len(SLR))# child_dirs)
-# #
-# #
-# #     # num of processes to do
-# #     # pool = Pool(processes=len(SLR))
-# #     # pool.map(main_help, ARGS)
-# #
-# #     # for debugging
-# #     main(args['<kpers>'], SLR[0], args['--coupled'], args['--verbose'])
-# #
-# #     # make pickles
-# #     # path_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-10')
-# #     # call(['./components/PickleRaw.py', path_result])
+        # print '\nFormatting Data ...\n'
+        # picklefmt.main(PATH_result)
 
+        print '\nBacking up to Time Capsule ...\n'
+        call(['TC_backup.py', self.path_res])
 
-
-
-def main(slr):
+def main(args):
     """ Run MODSWMM """
-    InitSim(slr).init()
+    slr, days = args
+    InitSim(slr, days).init()
     #
-    RunSim(slr).run_coupled()
+    RunSim(slr, days).run_coupled()
     #
-    FinishSim(slr).log()
-    FinishSim(slr).store_results()
-    # FinishSim(slr).pickles()
-
+    FinishSim(slr, days).log()
+    FinishSim(slr, days).store_results()
+    FinishSim(slr, days).pickles()
 
 if __name__ == '__main__':
+    arguments = docopt(__doc__)
+    typecheck = Schema({'KPERS'   : Use(int),  '--coupled' : Use(int),
+                        '--debug' : Use(int)}, ignore_extra_keys=True)
 
-    # num of processes to do
+    args = typecheck.validate(arguments)
     SLR = [0.0, 1.0, 2.0]
-    pool = Pool(processes=len(SLR))
-    pool.map(main, SLR)
-    # main(SLR[0])
+
+    if args['--debug']:
+        # short, 0.0 only simulation
+        InitSim(SLR[0], 2).init()
+        RunSim(SLR[0], 2).run_coupled()
+
+    elif args['--coupled']:
+        # zip up args into lists for pool workers
+        ARGS = zip(SLR, [args['KPERS']]*len(SLR))
+        pool = Pool(processes=len(SLR))
+        pool.map(main, ARGS)
+
+    else:
+        # run MF SS and create SWMM .INP
+        InitSim(SLR[0], args['KPERS']).init()

@@ -35,7 +35,7 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 
-import bcpl, picklefmt, swmmtoolbox as swmtbx
+import bcpl, swmmtoolbox as swmtbx
 import flopy.utils.formattedfile as ff
 import flopy.utils.binaryfile as bf
 #
@@ -267,7 +267,7 @@ if __name__ == '__main__':
     swmm_obj              = main(PATH_result)
     scenarios, path_picks = swmm_obj.scenarios, swmm_obj.path_picks
     ts_hr                 = swmm_obj.ts_hr
-    
+
     ### Multiprocessing
     if len(args) == 1:
         print 'Pickling FHD heads to: {}'.format(path_picks)
@@ -283,9 +283,6 @@ if __name__ == '__main__':
         pool = Pool(processes=len(scenarios))
         res = pool.map(_sub_var, zip(scenarios, ['run']*len(scenarios),
                                [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
-
-        print '\nFormatting Data ...\n'
-        picklefmt.main(PATH_result)
 
         end = time.time()
         print 'Pickles made in ~ {} min'.format(round((end-start)/60., 2))
