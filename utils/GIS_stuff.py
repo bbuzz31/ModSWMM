@@ -4,6 +4,10 @@ import os.path as op
 import numpy as np
 import pandas as pd
 from collections import OrderedDict
+from shapely.geometry import Point
+
+import geopandas
+import shapely
 
 class XY(object):
     def __init__(self, path_coupled):
@@ -21,6 +25,8 @@ class XY(object):
         self.ts_day     = self.df_sys.resample('D').first().index
         self.st         = '2011-12-01-00'
         self.end        = '2012-11-30-00'
+        print 'ArcGis cant take decimal points in column name (not SLR_0.0)'
+
     def add_Ks(self):
         """ Joins df with XY (UTM) w/ table of K vals & bounds in Arc (Ks). """
         keep_cols   = ['OBJECTID', 'ROW', 'COLUMN', 'IBND', 'UZF_IBND',
@@ -45,16 +51,31 @@ class XY(object):
             arr_cln          = np.where(arr_head < -100, np.nan, arr_head)
             # truncate dates
             arr_yr           = arr_cln[154:519, :]
-            df_heads[slr]    = arr_cln.mean(0)
+            col              = 'SLR_{}'.format(int(slr))
+            df_heads[col]    = arr_cln.mean(0)
         # add change columns
-        df_heads['Chg_1_0']  = df_heads[1.0] - df_heads[0.0]
-        df_heads['Chg_2_1']  = df_heads[2.0] - df_heads[1.0]
+        df_heads['Chg_1_0']  = df_heads['SLR_1'] - df_heads['SLR_0']
+        df_heads['Chg_2_1']  = df_heads['SLR_2'] - df_heads['SLR_1']
         # join to grid
         df_xy_heads = self.df_xy.join(df_heads).drop(['OBJECTID', 'ORIG_FID'], 1)
         # save to csv
-        df_xy_heads.to_csv(op.join(self.path_data, 'XY_heads.csv'), sep=',')
-        return df_xy_heads 
+        # df_xy_heads.to_excel(op.join(self.path_data, 'XY_heads.xlsx'))
+        return df_xy_heads
+
+    def df_to_shppt(self):
+        """ Convert pandas (heads) df to a point shapefile. Needs an X and Y """
+        path_gis = op.join(op.expanduser('~'), 'Dropbox', 'win_gis')
+        df = self.grid_heads()
+        df['geom'] = df.apply(lambda x: Point((float(x.POINT_X), float(x.POINT_Y))), axis=1)
+        geo_df = geopandas.GeoDataFrame(df, geometry='geom')
+        # attach spatial reference perhaps - untested
+        # proj WGS84
+        # df.crs= "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+        geo_df.to_file(op.join(path_gis, 'Year_Heads.shp'), driver='ESRI Shapefile')
+
+
+
 
 
 PATH   = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled')
-xy_obj = XY(PATH).grid_heads()
+xy_obj = XY(PATH).df_to_shppt()
