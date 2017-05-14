@@ -159,38 +159,38 @@ class InitSim(object):
             [os.remove(op.join(self.path_child, 'MF', f)) for f in
                 os.listdir(op.join(self.path_child, 'MF')) if regex.search(f)]
 
-class RunSim(InitSim):
+class RunSim(object):
     """ Run Coupled MODSWMM Simulation """
-    def __init__(self, slr, days):
-        super(RunSim, self).__init__(slr, days)
+    def __init__(self, initobj):
+        self.init       = initobj
         self.swmm_steps = 24
-        self.df_subs    = pd.read_csv(op.join(self.path_data, 'SWMM_subs.csv'),
+        self.df_subs    = pd.read_csv(op.join(self.init.path_data, 'SWMM_subs.csv'),
                                                              index_col='Zone')
         self.nrows      = int(max(self.df_subs.ROW))
         self.ncols      = int(max(self.df_subs.COLUMN))
 
         self.stors      = [11965, 11966, 11970, 12022]
-        os.chdir(self.path_child)
+        os.chdir(self.init.path_child)
 
     def run_coupled(self):
         """ Run MF and SWMM together """
         ## start MODFLOW
-        wncNWT.main_TRS(self.path_child, **self.mf_parms)
+        wncNWT.main_TRS(self.init.path_child, **self.init.mf_parms)
 
         time.sleep(1) # simply to let modflow finish printing to screen first
-        STEPS_mf = self.days+1
-        path_root = self.path_child
-        v  = self.swmm_parms.get('Verbose', 4)
-        slr_name  = self.swmm_parms.get('name')
+        STEPS_mf  = self.init.days+1
+        path_root = self.init.path_child
+        v         = self.init.swmm_parms.get('Verbose', 4)
+        slr_name  = self.init.slr_name
 
         # storage and outfalls within study area  -- ONE INDEXED
         sub_ids      = self.df_subs.index.tolist()
         NAME_swmm    = '{}.inp'.format(slr_name)
 
-        swmm.initialize(op.join(self.path_child, 'SWMM', NAME_swmm))
+        swmm.initialize(op.join(self.init.path_child, 'SWMM', NAME_swmm))
 
         # idea is run day 0 mf steady state, then day 1 of swmm; 1 of MF, 2 SWMM
-        for STEP_mf in range(1, self.days+1):
+        for STEP_mf in range(1, self.init.days+1):
             last_step = True if STEP_mf == (STEPS_mf - 1) else False
 
             if not last_step:
@@ -207,18 +207,19 @@ class RunSim(InitSim):
             ### overwrite new MF arrays
             finf      = for_mf[:,0].reshape(self.nrows, self.ncols)
             pet       = for_mf[:,1].reshape(self.nrows, self.ncols)
-            bcpl.write_array(op.join(self.path_child, 'MF', 'ext'), 'finf_', STEP_mf+1, finf)
-            bcpl.write_array(op.join(self.path_child, 'MF', 'ext'), 'pet_' , STEP_mf+1, pet)
-            self._debug('for_mf', STEP_mf, v, path_root=self.path_child)
+            ext_dir   = op.join(self.init.path_child, 'MF', 'ext')
+            bcpl.write_array(ext_dir, 'finf_', STEP_mf+1, finf)
+            bcpl.write_array(ext_dir, 'pet_' , STEP_mf+1, pet)
+            self._debug('for_mf', STEP_mf, v, path_root=self.init.path_child)
             bcpl.swmm_is_done(path_root, STEP_mf)
 
             ### MF step is runnning
             self._debug('mf_run', STEP_mf, v)
-            bcpl.mf_is_done(self.path_child, STEP_mf, v=v)
+            bcpl.mf_is_done(self.init.path_child, STEP_mf, v=v)
             self._debug('for_swmm', STEP_mf, v)
 
             ### get SWMM values for new step from uzfb and fhd
-            mf_step_all = bcpl.mf_get_all(self.path_child, STEP_mf, **self.swmm_parms)
+            mf_step_all = bcpl.mf_get_all(self.init.path_child, STEP_mf, **self.init.swmm_parms)
             self._debug('set_swmm', STEP_mf, v)
 
             # set MF values to SWMM
@@ -265,27 +266,25 @@ class RunSim(InitSim):
         if verb_level == 1 or verb_level == 3:
             print '\n'.join(message)
         if verb_level == 2 or verb_level == 3:
-            with open(op.join(path_root, 'Coupled_{}.log'.format(time.strftime('%m-%d'))), 'a') as fh:
-                    [fh.write('{}\n'.format(line)) for line in message]
+            with open(op.join(self.init.path_child, 'Coupled_{}.log'.format(
+                        time.strftime('%m-%d'))), 'a') as fh:
+                        [fh.write('{}\n'.format(line)) for line in message]
 
         if verb_level == 4 and 'swmm_run' in steps or 'mf_run' in steps:
             print '\n'.join(message)
 
         return message
 
-class FinishSim(InitSim):
+class FinishSim(object):
     """ Write Log, Move to External HD, Write Pickles, Backup Pickles """
-    def __init__(self, slr, days):
-        super(FinishSim, self).__init__(slr, days)
-        self.cur_run = '{}'.format(self.slr_name)
-        self.date    = self.slr_name.split('_')[1]
-        self.end     = time.time()
-        self.elapsed = round((self.end - self.start)/60., 2)
+    def __init__(self, init):
+        self.init    = init
+        self.date    = self.init.slr_name.split('_')[1]
 
     def log(self):
         """ Write Elapsed time and Parameters to Log File """
         # def _log(path_root, slr_name,  elapsed='', params=''):
-        path_log = op.join(self.path_child, 'Coupled_{}.log'.format(self.date))
+        path_log = op.join(self.init.path_child, 'Coupled_{}.log'.format(self.date))
         opts     = ['START_DATE', 'name', 'days', 'END_DATE']
         headers  = {'Width': 'Subcatchments:', 'N-Imperv': 'SubAreas:',
                    'MaxRate' : 'Infiltration:', 'Por' : 'Aquifer:',
@@ -294,31 +293,33 @@ class FinishSim(InitSim):
                    'Roughness' : 'Links:', 'Depth' : 'Transects:'}
 
         with open (path_log, 'a') as fh:
-            fh.write('{} started at: {} {}\n'.format(self.slr_name, self.start,
+            fh.write('{} started at: {} {}\n'.format(self.init.slr_name, self.date,
                                                      time.strftime('%H:%m:%S')))
             fh.write('MODFLOW Parameters: \n')
             [fh.write('\t{} : {}\n'.format(key, value)) for key, value in
-                                                    self.mf_parms.items()]
+                                                    self.init.mf_parms.items()]
             fh.write('SWMM Parameters: \n')
             fh.write('\tOPTIONS\n')
             [fh.write('\t\t{} : {}\n'.format(key, value)) for key, value in
-                                          self.swmm_parms.items() if key in opts]
+                                          self.init.swmm_parms.items() if key in opts]
 
-            for key, value in self.swmm_parms.items():
+            for key, value in self.init.swmm_parms.items():
                 if key in opts: continue;
                 if key in headers.keys():
                     fh.write('\t{}\n'.format(headers[key]))
                 fh.write('\t\t{} : {}\n'.format(key, value))
 
-            fh.write('\n{} finished in : {} min\n'.format(self.slr_name, self.elapsed))
+            end     = time.time()
+            elapsed = round((end - self.init.start)/60., 2)
+            fh.write('\n{} finished in : {} min\n'.format(self.init.slr_name, elapsed))
 
     def store_results(self):
         ### MF
-        mf_dir    = op.join(self.path_child, 'MF')
+        mf_dir    = op.join(self.init.path_child, 'MF')
         cur_files = [op.join(mf_dir, mf_file) for mf_file in os.listdir(mf_dir)
-                        if self.cur_run in mf_file]
+                        if self.init.slr_name in mf_file]
         ext_dir   = op.join(mf_dir, 'ext')
-        dest_dir  = op.join(self.path_res, self.cur_run)
+        dest_dir  = op.join(self.init.path_res, self.init.slr_name)
 
         if op.isdir(dest_dir):
             dest_dir = op.join(dest_dir, 'temp')
@@ -336,15 +337,15 @@ class FinishSim(InitSim):
             print 'ext directory not copied or removed'
 
         ### SWMM
-        swmm_dir  = op.join(self.path_child, 'SWMM')
+        swmm_dir  = op.join(self.init.path_child, 'SWMM')
         cur_files = [op.join(swmm_dir, swmm_file) for swmm_file in
-                           os.listdir(swmm_dir) if self.cur_run in swmm_file]
+                           os.listdir(swmm_dir) if self.init.slr_name in swmm_file]
         [shutil.copy(swmm_file, op.join(dest_dir, op.basename(swmm_file)))
                                                   for swmm_file in cur_files]
         [os.remove(cur_file) for cur_file in cur_files]
 
         ### LOG
-        log       = op.join(self.path_child, 'Coupled_{}.log'.format(self.date))
+        log       = op.join(self.init.path_child, 'Coupled_{}.log'.format(self.date))
         if op.exists(log):
             shutil.copy (log, op.join(dest_dir, op.basename(log)))
             os.remove(log)
@@ -362,26 +363,29 @@ class FinishSim(InitSim):
 def main(args):
     """ Run MODSWMM """
     slr, days = args
-    InitSim(slr, days).init()
+    InitObj   = InitSim(slr, days)
+    InitObj.init()
+    InitObj   = InitSim(slr, days)
     #
-    RunSim(slr, days).run_coupled()
+    RunSim(InitObj).run_coupled()
     #
-    FinishSim(slr, days).log()
-    FinishSim(slr, days).store_results()
-    # FinishSim(slr, days).pickles()
+    FinishSim(InitObj).log()
+    FinishSim(InitObj).store_results()
+    # FinishSim(slr, days).pickles() # needs to go outside of the loop?
 
 if __name__ == '__main__':
     arguments = docopt(__doc__)
     typecheck = Schema({'KPERS'   : Use(int),  '--coupled' : Use(int),
                         '--debug' : Use(int)}, ignore_extra_keys=True)
-    # this is the test                        
+    # this is the test
     args = typecheck.validate(arguments)
     SLR = [0.0, 1.0, 2.0]
 
     if args['--debug']:
         # short, 0.0 only simulation
-        InitSim(SLR[0], 2).init()
-        RunSim(SLR[0], 2).run_coupled()
+        InitObj = InitSim(SLR[0], 2)
+        InitObj.init()
+        RunSim(InitObj).run_coupled()
 
     elif args['--coupled']:
         # zip up args into lists for pool workers

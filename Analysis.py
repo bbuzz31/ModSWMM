@@ -670,6 +670,21 @@ class sensitivity(res_base):
         im        = axes.imshow(cmp_heads, cmap=plt.cm.jet)
         fig.colorbar(im)
 
+    def leak_vs_run(self):
+        """ Are there DAYS when there is NO runoff but SOME surface leakage? """
+        slr        = self.slr[-1]
+        arr_leak   = (self._load_uzf()['surf_leak'][slr].reshape(
+                                                    len(self.ts_day), -1)
+                                                    .sum(1))
+        arr_run    = np.nansum(self._load_swmm()[str(slr)].reshape(
+                                            len(self.ts_hr), -1), 1)
+        df_run     = pd.DataFrame({'run': arr_run}, index=self.ts_hr).resample('D').sum()
+        df_run['leak'] = arr_leak
+        print df_run[df_run['leak'] == 0]
+
+
+
+
 
 def rc_params():
     matplotlib.rcParams['figure.figsize']   = (16, 9)
@@ -681,7 +696,7 @@ def rc_params():
     # matplotlib.rcParams['figure.figsize']   = (18, 12) # for saving
     # matplotlib.rcParams['axes.labelweight'] = 'bold'
     for param in matplotlib.rcParams.keys():
-        print param
+        # print param
         pass
 
 def make_plots():
@@ -690,26 +705,26 @@ def make_plots():
     rc_params()
 
     # summary
-    summary_obj = summary(PATH_result)
+    # summary_obj = summary(PATH_result)
     # summary_obj.plot_ts_sys_var()
     # summary_obj.plot_slr_sys_sums()
-    summary_obj.plot_ts_uzf_sums()
+    # summary_obj.plot_ts_uzf_sums()
     # summary_obj.plot_head_contours()
-    summary_obj.save_cur_fig()
+    # summary_obj.save_cur_fig()
 
     # runoff
-    runoff_obj = runoff(PATH_result)
+    # runoff_obj = runoff(PATH_result)
     # runoff_obj.plot_area_vol()
     # runoff_obj.plot_ts_sums()
     # runoff_obj.plot_2d_chg_slr()
 
     ## dtw
-    dtw_obj    = dtw(PATH_result)
+    # dtw_obj    = dtw(PATH_result)
     # dtw_obj.plot_area_days()
     # dtw_obj.plot_interesting()
 
     ## methods
-    methods_obj = methods(PATH_result)
+    # methods_obj = methods(PATH_result)
     # methods_obj.plot_param_mf()
     # methods_obj.plot_param_swmm()
     # methods_obj.plot_heads_1loc()
@@ -718,6 +733,7 @@ def make_plots():
     ## sensitivity
     sensit_obj  = sensitivity(PATH_result)
     # sensit_obj.ss_vs_trans()
+    sensit_obj.leak_vs_run()
 
     # print plt.get_figlabels()
     plt.show()
