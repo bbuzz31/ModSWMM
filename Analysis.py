@@ -187,7 +187,7 @@ class res_base(object):
             raise ValueError('No Current Figure Available')
         if not op.isdir(self.path_fig):
             os.makedirs(self.path_fig)
-        curfig.savefig(op.join(self.path_fig, curfig.get_label()+'.png'))
+        curfig.savefig(op.join(self.path_fig, curfig.get_label()))
 
     @staticmethod
     def fill_grid(ser):
@@ -268,7 +268,7 @@ class summary(res_base):
         Plot Sum of Recharge, ET,  at all locs, each step, monthly mean
         PLot Precipation
         """
-        var_map  = OrderedDict([('uzf_rch','GW Recharge'), ('uzf_et', 'GW ET')])
+        var_map  = OrderedDict([('uzf_rch','GW  Recharge'), ('uzf_et', 'GW  ET')])
         dict_uzf = self._load_uzf()
 
         df_sums  = pd.DataFrame({'Precip':self.df_sys['Precip_{}'.format(
@@ -295,7 +295,7 @@ class summary(res_base):
             df_slr   = df_mon.filter(like=str(var))
             df_slr.plot(ax=axe[i], title=var, sharey=True)
 
-        df_mon.Precip.plot(ax=axe[-1], title='Precip')
+        df_mon.Precip.plot(ax=axe[-1], title='Precipitation')
 
         ### Y AXES
         axe[0].set_ylabel('Volume for whole model, in cubic meters')
@@ -676,10 +676,12 @@ def rc_params():
     matplotlib.rcParams['figure.titlesize'] = 14
     matplotlib.rcParams['axes.titlesize']   = 11
     matplotlib.rcParams['axes.labelsize']   = 11
-    matplotlib.rcParams['savefig.dpi']      = 100
+    matplotlib.rcParams['savefig.dpi']      = 1000
+    matplotlib.rcParams['savefig.format']   = 'eps'
+    # matplotlib.rcParams['figure.figsize']   = (18, 12) # for saving
     # matplotlib.rcParams['axes.labelweight'] = 'bold'
     for param in matplotlib.rcParams.keys():
-        # print param
+        print param
         pass
 
 def make_plots():
