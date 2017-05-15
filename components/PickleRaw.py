@@ -254,7 +254,7 @@ def main(path_result):
     pickle_ext(path_result).ts_sums()
     return swmm_obj
 
- if __name__ == '__main__':
+if __name__ == '__main__':
     start       = time.time()
     arguments   = docopt(__doc__)
     typecheck   = Schema({'PATH' : os.path.exists}, ignore_extra_keys=True)
