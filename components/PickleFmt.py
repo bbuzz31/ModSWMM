@@ -45,6 +45,7 @@ class fmt_base(object):
         """
         f_name = 'swmm_{}_grid_{}.npy'.format(kind, self.slr[0])
         if op.exists(op.join(self.path_picks, f_name)):
+            print '{} exists, not making swmm grids...'.format(f_name)
             return
         for i, slr in enumerate(self.slr):
             f_name_old = 'swmm_{}_{}.npy'.format(kind, slr)

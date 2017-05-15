@@ -144,14 +144,22 @@ class res_base(object):
                 continue
         return 'Gagefile for row {}, col {}, not found in: {}'.format(row, col, self.path)
 
-    def _load_swmm(self):
-        """ Dictionary of SLR : 3d Matrix of hrs x row x col """
-        dict_run = {}
+    def _load_swmm(self, var='run', scen=False):
+        """
+        Load Pickled SWMM (full grid) Arrays
+        Args:
+            var = 'run' or 'heads'
+            slr = 0.0, 1.0, or 2.0 to return that array
+        Returns : Dictionary of SLR : array of hrs x row x col
+        """
+        dict_var = {}
+        for slr in self.slr:
+            dict_var[str(slr)] = np.load(op.join(self.path_picks,
+                                    'swmm_{}_grid_{}.npy').format(var, slr))
+        if scen:
+            return dict_var[str(slr)]
 
-        for slr in self.slr_sh:
-            dict_run[slr] = np.load(op.join(self.path_picks,
-                                        'swmm_run_grid_{}.npy').format(slr))
-        return dict_run
+        return dict_var
 
     def _load_fhd(self):
         """ Load Pickled FHD Arrays into a Dictionary of SLR: arr"""
@@ -217,6 +225,8 @@ class summary(res_base):
         res_base.__init__(self, path_results)
         self.row, self.col  = row, col
         self.loc_1d         = bcpl.cell_num(self.row, self.col) + 10000
+    ##### May only need plot_ts_uzf_sums
+    ##### 2d head chg could be useful for sensitivity and/or calibration
 
     ### SWMM
     # make this a fill plot, except for precip
@@ -259,7 +269,7 @@ class summary(res_base):
         fig.set_label(title.get_text())
         return fig
 
-    ### MF
+    ### GW
     def plot_ts_uzf_sums(self):
         """
         Plot Sum of Recharge, ET,  at all locs, each step, monthly mean
@@ -321,6 +331,15 @@ class summary(res_base):
 
         df_uzf_run.resample('MS').mean().plot(subplots=False, title='UZF Runoff')
 
+    def plot_head_hist(self):
+        """ Create a Histogram of Heads for each SLR Scenario """
+        pass
+
+
+
+
+
+
     ### make figs for thesis in in ArcMap
     def plot_2d_head_chg(self):
         """ Change in Average Annual Heads """
@@ -371,7 +390,7 @@ class runoff(res_base):
         self.df_area = pd.read_pickle(op.join(self.path_picks, 'percent_vols.df'))
         self.vols    = BB.uniq([float(vol.split('_')[1]) for vol in self.df_area.columns])
         self.seasons = ['Winter', 'Spring', 'Summer', 'Fall']
-        self.dict    = self._load_swmm()
+        self.dict    = self._load_swmm('run')
 
     def plot_area_vol(self):
         """ Plot area vs hours, curves of SLR, subplots of rates """
@@ -414,7 +433,6 @@ class runoff(res_base):
     # greater change 1 -0 than 2-1; looks like distribution of conductivities, add plot
     def plot_2d_chg_slr(self):
         """ Plot Grid Change in total Runoff due to SLR """
-
         low       = self.dict['0.0'].sum(0)
         med       = self.dict['1.0'].sum(0)
         high      = self.dict['2.0'].sum(0)
@@ -701,7 +719,7 @@ class sensitivity(res_base):
         arr_leak   = (self._load_uzf()['surf_leak'][slr].reshape(
                                                     len(self.ts_day), -1)
                                                     .sum(1))
-        arr_run    = np.nansum(self._load_swmm()[str(slr)].reshape(
+        arr_run    = np.nansum(self._load_swmm('run', slr).reshape(
                                             len(self.ts_hr), -1), 1)
         df_run     = pd.DataFrame({'run': arr_run}, index=self.ts_hr).resample('D').sum()
         df_run['leak'] = arr_leak
@@ -726,36 +744,37 @@ def make_plots():
     rc_params()
 
     # summary
-    summary_obj = summary(PATH_result)
+    # summary_obj = summary(PATH_result)
     # summary_obj.plot_ts_sys_var()
     # summary_obj.plot_slr_sys_sums()
-    summary_obj.plot_ts_uzf_sums()
-    summary_obj.plot_2d_head_chg()
+    # summary_obj.plot_ts_uzf_sums()
+    # summary_obj.plot_head_hist()
+    # summary_obj.plot_2d_head_chg()
     # summary_obj.plot_head_contours()
     # summary_obj.save_cur_fig()
 
     # runoff
-    runoff_obj = runoff(PATH_result)
-    runoff_obj.plot_area_vol()
+    # runoff_obj = runoff(PATH_result)
+    # runoff_obj.plot_area_vol()
     # runoff_obj.plot_ts_sums()
     # runoff_obj.plot_2d_chg_slr()
 
     ## dtw
-    dtw_obj    = dtw(PATH_result)
-    dtw_obj.plot_area_days()
-    dtw_obj.plot_interesting()
+    # dtw_obj    = dtw(PATH_result)
+    # dtw_obj.plot_area_days()
+    # dtw_obj.plot_interesting()
 
     ## methods
-    methods_obj = methods(PATH_result)
+    # methods_obj = methods(PATH_result)
     # methods_obj.plot_param_mf()
     # methods_obj.plot_param_swmm()
-    methods_obj.plot_heads_1loc()
+    # methods_obj.plot_heads_1loc()
     # methods_obj.plot_theta_wc()
 
     ## sensitivity
-    # sensit_obj  = sensitivity(PATH_result)
+    sensit_obj  = sensitivity(PATH_result)
     # sensit_obj.ss_vs_trans()
-    # sensit_obj.leak_vs_run()
+    sensit_obj.leak_vs_run()
 
     # print plt.get_figlabels()
     plt.show()
