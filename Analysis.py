@@ -682,10 +682,6 @@ class sensitivity(res_base):
         df_run['leak'] = arr_leak
         print df_run[df_run['leak'] == 0]
 
-
-
-
-
 def rc_params():
     matplotlib.rcParams['figure.figsize']   = (16, 9)
     matplotlib.rcParams['figure.titlesize'] = 14

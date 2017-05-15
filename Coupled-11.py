@@ -81,7 +81,7 @@ class InitSim(object):
                     ('ss', False), ('ss_rate', 0.0002783601), ('strt', 1),
                     ('extdp', 3.0), ('extwc', 0.101), ('eps', 3.75),
                     ('thts', 0.3), ('sy', 0.25), ('vks', 0.12), ('surf', 0.3048),
-                    ('noleak', False),
+                    ('noleak', False), ('diff', 0.05),
                     ('coupled', self.coupled), ('Verbose', self.verbose)
                     ])
         return MF_params
