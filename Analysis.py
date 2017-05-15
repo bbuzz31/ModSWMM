@@ -12,10 +12,8 @@ from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
-import matplotlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
-import matplotlib.dates  as mdates
-import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 
 from components import bcpl, swmmtoolbox as swmtbx
@@ -224,7 +222,6 @@ class summary(res_base):
     # make this a fill plot, except for precip
     def plot_ts_sys_var(self):
         """ Plot SWMM System Variables by Var """
-        print 'this should be a fill plot, except for precip'
         sys_vars  = ['Infil', 'Runoff', 'Surf_Evap', 'Precip']
         fig, axes = plt.subplots(2, 2)
         title     = fig.suptitle('SWMM System Variables')
@@ -323,6 +320,34 @@ class summary(res_base):
              df_uzf_run['SLR: {}'.format(key)] = val.sum(2).sum(1)
 
         df_uzf_run.resample('MS').mean().plot(subplots=False, title='UZF Runoff')
+
+    ### make figs for thesis in in ArcMap
+    def plot_2d_head_chg(self):
+        """ Change in Average Annual Heads """
+        dict_hds_raw = self._load_fhd()
+        dict_hds_chg = {}
+        for i, (key, val) in enumerate(dict_hds_raw.items()):
+            val     = val[154:, :, :] # start Dec 1, 2011
+            arr_avg = val.mean(axis=0)
+            # convert inactive to nan
+            dict_hds_chg[key] = np.where(arr_avg < -500, np.nan, arr_avg)
+        dict_hds_chg['1-0'] = dict_hds_chg[1.0] - dict_hds_chg[0.0]
+        dict_hds_chg['2-1'] = dict_hds_chg[2.0] - dict_hds_chg[1.0]
+
+        fig, axes = plt.subplots(ncols=2)
+        title     = plt.suptitle('Groundwater Head Change from Sea Level Rise')
+        axe       = axes.ravel()
+        # define intervals and normalize colors
+        cmap      = plt.cm.jet
+        bounds    = np.linspace(0, 1, 11)
+        norm      = mpl.colors.BoundaryNorm(bounds, cmap.N)
+
+        im0       = axe[0].imshow(dict_hds_chg['1-0'], cmap=cmap, norm=norm)#, interpolation='gaussian')
+        im1       = axe[1].imshow(dict_hds_chg['2-1'], cmap=cmap, norm=norm)
+        # fig.colorbar(im1,
+
+        fig.set_label(title.get_text())
+        return fig
 
     ### do this in ArcMap
     def plot_head_contours(self):
@@ -683,47 +708,48 @@ class sensitivity(res_base):
         print df_run[df_run['leak'] == 0]
 
 def rc_params():
-    matplotlib.rcParams['figure.figsize']   = (16, 9)
-    matplotlib.rcParams['figure.titlesize'] = 14
-    matplotlib.rcParams['axes.titlesize']   = 11
-    matplotlib.rcParams['axes.labelsize']   = 11
-    matplotlib.rcParams['savefig.dpi']      = 1000
-    matplotlib.rcParams['savefig.format']   = 'eps'
+    mpl.rcParams['figure.figsize']   = (16, 9)
+    mpl.rcParams['figure.titlesize'] = 14
+    mpl.rcParams['axes.titlesize']   = 11
+    mpl.rcParams['axes.labelsize']   = 11
+    mpl.rcParams['savefig.dpi']      = 1000
+    mpl.rcParams['savefig.format']   = 'eps'
     # matplotlib.rcParams['figure.figsize']   = (18, 12) # for saving
     # matplotlib.rcParams['axes.labelweight'] = 'bold'
-    for param in matplotlib.rcParams.keys():
+    for param in mpl.rcParams.keys():
         # print param
         pass
 
 def make_plots():
     PATH_stor   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results')
-    PATH_result = ('{}_05-08').format(PATH_stor)
+    PATH_result = ('{}_05-14').format(PATH_stor)
     rc_params()
 
     # summary
-    # summary_obj = summary(PATH_result)
+    summary_obj = summary(PATH_result)
     # summary_obj.plot_ts_sys_var()
     # summary_obj.plot_slr_sys_sums()
-    # summary_obj.plot_ts_uzf_sums()
+    summary_obj.plot_ts_uzf_sums()
+    summary_obj.plot_2d_head_chg()
     # summary_obj.plot_head_contours()
     # summary_obj.save_cur_fig()
 
     # runoff
-    # runoff_obj = runoff(PATH_result)
-    # runoff_obj.plot_area_vol()
+    runoff_obj = runoff(PATH_result)
+    runoff_obj.plot_area_vol()
     # runoff_obj.plot_ts_sums()
     # runoff_obj.plot_2d_chg_slr()
 
     ## dtw
-    # dtw_obj    = dtw(PATH_result)
-    # dtw_obj.plot_area_days()
-    # dtw_obj.plot_interesting()
+    dtw_obj    = dtw(PATH_result)
+    dtw_obj.plot_area_days()
+    dtw_obj.plot_interesting()
 
     ## methods
     methods_obj = methods(PATH_result)
-    methods_obj.plot_param_mf()
+    # methods_obj.plot_param_mf()
     # methods_obj.plot_param_swmm()
-    # methods_obj.plot_heads_1loc()
+    methods_obj.plot_heads_1loc()
     # methods_obj.plot_theta_wc()
 
     ## sensitivity

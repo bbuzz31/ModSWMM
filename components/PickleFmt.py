@@ -253,6 +253,5 @@ def main(path_result):
     run.make_df_run_season()
 
 if __name__ == '__main__':
-    # PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-04')
+    PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-14')
     main(PATH_result)
-    # fmt_run(PATH_result).make_df_vol_area()

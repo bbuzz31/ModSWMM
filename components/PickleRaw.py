@@ -16,6 +16,7 @@ Arguments:
   PATH  Directory with list of Model Runs (starts with Results_)
 
 Options:
+  --fmt    Run Formatting Script                                    [default: 0]
   --sub    Make Matrixes of a SWMM Variable
   --help   Print this message
 
@@ -35,7 +36,7 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 
-import bcpl, swmmtoolbox as swmtbx
+import bcpl, picklefmt, swmmtoolbox as swmtbx
 import flopy.utils.formattedfile as ff
 import flopy.utils.binaryfile as bf
 #
@@ -257,10 +258,13 @@ def main(path_result):
 if __name__ == '__main__':
     start       = time.time()
     arguments   = docopt(__doc__)
-    typecheck   = Schema({'PATH' : os.path.exists}, ignore_extra_keys=True)
+    typecheck   = Schema({'PATH' : os.path.exists, '--fmt' : Use(int)},
+                          ignore_extra_keys=True)
     PATH_result = op.abspath(typecheck.validate(arguments)['PATH'])
     # remove undefined items from dictionary
     args = {k:v for k, v in arguments.iteritems() if v}
+    # this may introduce a bug
+    args = typecheck.validate(args)
 
     ### 1 CPU
     swmm_obj              = main(PATH_result)
@@ -291,3 +295,5 @@ if __name__ == '__main__':
         pool = Pool(processes=len(scenarios))
         res = pool.map(_sub_var, zip(scenarios, ['soil']*len(scenarios),
                                [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
+    if args['--fmt']:
+        picklefmt.main()
