@@ -9,7 +9,7 @@ def mf_params(self):
                    ('ss', False), ('ss_rate', 0.0002783601), ('strt', 1),
                    ('extdp', 3.0), ('extwc', 0.101), ('eps', 3.75),
                    ('thts', 0.3), ('sy', 0.25), ('vks', 0.12), ('surf', 0.3048),
-                   ('noleak', False), ('diff', 0.05),
+                   ('noleak', False),
                    ('coupled', self.coupled), ('Verbose', self.verbose)
                    ])
        return MF_params
@@ -19,7 +19,7 @@ def mf_params(self):
        SWMM_params = OrderedDict([
               #OPTIONS
               ('START_DATE', self.mf_parms['START_DATE']),
-              ('name', self.slr_name), ('days', self.days),
+              ('name', self.slr_name), ('days', self.days),('diff', 0.05),
               # SUBCATCHMENTS
               ('Width', 200),
               # SUBAREAS

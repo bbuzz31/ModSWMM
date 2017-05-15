@@ -54,6 +54,7 @@ class XY(object):
             # store SS and avg transient in data frame
             df_heads[col]         = arr_cln[0, :]
             df_heads[col[:-3]]    = arr_cln.mean(0)
+            
         # add change columns
         df_heads['Chg_1_0']  = df_heads['SLR_1'] - df_heads['SLR_0']
         df_heads['Chg_2_1']  = df_heads['SLR_2'] - df_heads['SLR_1']
