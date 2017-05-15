@@ -53,7 +53,12 @@ from docopt import docopt
 from schema import Schema, Use, Or
 
 class InitSim(object):
-    """ booking functions: _fmt, _debug, _log, _store_results """
+    """
+    Initialize Simulation
+    Remove Old Control Files
+    Run MF SS
+    Create SWMM Input File
+    """
     def __init__(self, slr, days, ext=''):
         self.slr        = slr
         self.days       = days
@@ -65,7 +70,7 @@ class InitSim(object):
         self.path_child = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled',
                                 time.strftime('%b')+ext, 'Child_{}'.format(slr))
         self.path_data  = op.join(self.path_child, 'Data')
-        self.path_res   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-12')
+        self.path_res   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-14')
         self.start      = time.time()
 
     def mf_params(self):

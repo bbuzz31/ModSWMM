@@ -25,7 +25,6 @@ class XY(object):
         self.ts_day     = self.df_sys.resample('D').first().index
         self.st         = '2011-12-01-00'
         self.end        = '2012-11-30-00'
-        print 'ArcGis cant take decimal points in column name (not SLR_0.0)'
 
     def add_Ks(self):
         """ Joins df with XY (UTM) w/ table of K vals & bounds in Arc (Ks). """
@@ -47,19 +46,28 @@ class XY(object):
             fhd_pickle       = 'heads_{}.npy'.format(slr)
             pickle_file      = op.join(self.path_picks, fhd_pickle)
             arr_head         = np.load(pickle_file).reshape(-1, len(df_heads))
-            # inactive to np.nan ;;; should do this in pickles
+            # inactive to high for conours ;;; should make np.nan in pickles
             arr_cln          = np.where(arr_head < -100, np.nan, arr_head)
             # truncate dates
             arr_yr           = arr_cln[154:519, :]
-            col              = 'SLR_{}'.format(int(slr))
-            df_heads[col]    = arr_cln.mean(0)
+            col              = 'SLR_{}-SS'.format(int(slr))
+            # store SS and avg transient in data frame
+            df_heads[col]         = arr_cln[0, :]
+            df_heads[col[:-3]]    = arr_cln.mean(0)
         # add change columns
         df_heads['Chg_1_0']  = df_heads['SLR_1'] - df_heads['SLR_0']
         df_heads['Chg_2_1']  = df_heads['SLR_2'] - df_heads['SLR_1']
+        df_heads['Chg_2_0']  = df_heads['SLR_2'] - df_heads['SLR_0']
+
+        df_heads['Chg_1_0_SS']  = df_heads['SLR_1-SS'] - df_heads['SLR_0-SS']
+        df_heads['Chg_2_1_SS']  = df_heads['SLR_2-SS'] - df_heads['SLR_1-SS']
+        df_heads['Chg_2_0_SS']  = df_heads['SLR_2-SS'] - df_heads['SLR_0-SS']
+
         # join to grid
         df_xy_heads = self.df_xy.join(df_heads).drop(['OBJECTID', 'ORIG_FID'], 1)
+        df_xy_heads.dropna(inplace=True)
         # save to csv
-        # df_xy_heads.to_excel(op.join(self.path_data, 'XY_heads.xlsx'))
+        df_xy_heads.to_excel(op.join(self.path_data, 'XY_heads.xlsx'))
         return df_xy_heads
 
     def df_to_shppt(self):

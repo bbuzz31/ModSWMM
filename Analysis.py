@@ -503,7 +503,7 @@ class methods(res_base):
         self.col    = col
         self.loc_1d = bcpl.cell_num(self.row, self.col) + 10000
 
-    def plot_param_mf(self, params='KZL1'):
+    def plot_param_mf(self, params='KXL1'):
         df_mf = pd.read_csv(op.join(self.path_data, 'MF_GRID.csv'), index_col='UZF_IBND')
         df_mf[df_mf.index<1] = np.nan
 
@@ -724,16 +724,16 @@ def make_plots():
     # dtw_obj.plot_interesting()
 
     ## methods
-    # methods_obj = methods(PATH_result)
-    # methods_obj.plot_param_mf()
+    methods_obj = methods(PATH_result)
+    methods_obj.plot_param_mf()
     # methods_obj.plot_param_swmm()
     # methods_obj.plot_heads_1loc()
     # methods_obj.plot_theta_wc()
 
     ## sensitivity
-    sensit_obj  = sensitivity(PATH_result)
+    # sensit_obj  = sensitivity(PATH_result)
     # sensit_obj.ss_vs_trans()
-    sensit_obj.leak_vs_run()
+    # sensit_obj.leak_vs_run()
 
     # print plt.get_figlabels()
     plt.show()

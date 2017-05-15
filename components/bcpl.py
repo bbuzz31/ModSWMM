@@ -128,7 +128,7 @@ def mf_get_all(path_root, mf_step, **params):
 
                 elif int(float(header[1])) < mf_step + 1:
                     theta_uzfb[row][col] = params.get('Por')
-                    head_fhd[row][col]   = arr_surf[row][col] - 0.05
+                    head_fhd[row][col]   = arr_surf[row][col] - 0.01
                     linecache.clearcache()
                     looking = False
 
@@ -141,7 +141,7 @@ def mf_get_all(path_root, mf_step, **params):
                 if line_start < 4:
                     # print (row,col)
                     theta_uzfb[row][col] = params.get('Por', 0.3)
-                    head_fhd[row][col]   = arr_surf[row][col] - 0.05
+                    head_fhd[row][col]   = arr_surf[row][col] - 0.01
                     looking = False
 
     row_np    = row_np + 1
