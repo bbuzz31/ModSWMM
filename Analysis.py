@@ -41,7 +41,7 @@ class res_base(object):
         self.st         = '2011-12-01-00'
         self.end        = '2012-11-30-00'
         # self.ts_hr    = self.ts_hr[3696:]
-        # self.ts_day   = self.ts_day[154:]
+        self.ts_yr_day  = self.ts_day[154:-30]
 
     def ts_all(self, param, loc=False, slr=0.0, dates=[0, -0], plot=False):
         """
@@ -297,7 +297,7 @@ class summary(res_base):
         axe.append(fig.add_subplot(gs[:2, 1]))
         axe.append(fig.add_subplot(gs[2, :]))
 
-        title  = fig.suptitle('Monthly Averages')
+        # title  = fig.suptitle('Monthly Averages')
         for i, var in enumerate(var_map.values()):
             df_slr   = df_mon.filter(like=str(var))
             df_slr.plot(ax=axe[i], title=var, sharey=True)
@@ -318,7 +318,7 @@ class summary(res_base):
         gs.update(bottom=0.075, hspace=0.6, wspace=0.15)
         # axe[2].set_labelpad(5)
 
-        fig.set_label(title.get_text())
+        fig.set_label('ts_summary')
 
         return fig
 
@@ -331,14 +331,42 @@ class summary(res_base):
 
         df_uzf_run.resample('MS').mean().plot(subplots=False, title='UZF Runoff')
 
-    def plot_head_hist(self):
+    def plot_head_hist(self, bins=30):
         """ Create a Histogram of Heads for each SLR Scenario """
-        pass
+        # dict_heads = self._load_swmm('heads')
+        dict_heads = self._load_fhd()
+        fig, axes  = plt.subplots(ncols=len(self.slr), sharey=True)
+        # title      = fig.suptitle('Histograms of Groundwater Head')
+        axe        = axes.ravel()
+        df_pdfs    = pd.DataFrame()
+        for i, (slr, arr) in enumerate(dict_heads.items()):
+            arr_cln   = np.where(arr < 0, np.nan, arr) # for fhd
+            arr_cln   = arr_cln[~np.isnan(arr_cln)].flatten()[154:-30] # for both
+            # for converting absolute counts to between 0 1
+            # weights  = (np.ones_like(arr_cln)/len(arr_cln)) #* arr_cln / (arr_cln.max() - arr_cln.min())
 
+            mean, std = arr_cln.mean(), arr_cln.std()
+            n, bin_edges, patches = axe[i].hist(arr_cln, bins=bins, normed=True,
+                            align='mid', rwidth=0.55,  #weights=weights,
+                            histtype='bar', facecolor='green', alpha=0.35)
+            # bin_middles = 0.5*(bin_edges[1:] + bin_edges[:-1])
+            # axe[i].plot(bin_middles, n, 'r-', linewidth=2)
+            colname          = 'SLR-{} (m)'.format(slr)
+            df_pdfs[colname] = mpl.mlab.normpdf(bin_edges, mean, std)
+            l = axe[i].plot(bin_edges, df_pdfs[colname], color='maroon', linewidth=1)
+            axe[i].set_title('SLR: {} (m)'.format(slr))
+            axe[i].set_ylabel('Probability')
+            axe[1].set_xlabel('GW Head (m)')
+            # axe[i].xaxis.set_ticks(np.arange(0, 8, 0.5))
 
-
-
-
+        fig.set_label('hist_head')
+        # plot the distribution functions on one graph
+        fig2, axes2      = plt.subplots()
+        df_pdfs['bins']  =  bin_edges # differences due to slr in bins negligible
+        df_pdfs.set_index('bins', inplace=True)
+        df_pdfs.plot(ax=axes2)
+        axes2.set_ylabel('Probability')
+        axes2.set_xlabel('GW Head (m)')
 
     ### make figs for thesis in in ArcMap
     def plot_2d_head_chg(self):
@@ -714,7 +742,10 @@ class sensitivity(res_base):
         fig.colorbar(im)
 
     def leak_vs_run(self):
-        """ Are there DAYS when there is NO runoff but SOME surface leakage? """
+        """
+        Are there DAYS when there is NO runoff but SOME surface leakage?
+        This currently does not work.
+        """
         slr        = self.slr[-1]
         arr_leak   = (self._load_uzf()['surf_leak'][slr].reshape(
                                                     len(self.ts_day), -1)
@@ -740,15 +771,15 @@ def rc_params():
 
 def make_plots():
     PATH_stor   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results')
-    PATH_result = ('{}_05-14').format(PATH_stor)
+    PATH_result = ('{}_05-08').format(PATH_stor)
     rc_params()
 
     # summary
-    # summary_obj = summary(PATH_result)
+    summary_obj = summary(PATH_result)
     # summary_obj.plot_ts_sys_var()
     # summary_obj.plot_slr_sys_sums()
     # summary_obj.plot_ts_uzf_sums()
-    # summary_obj.plot_head_hist()
+    summary_obj.plot_head_hist()
     # summary_obj.plot_2d_head_chg()
     # summary_obj.plot_head_contours()
     # summary_obj.save_cur_fig()
@@ -772,13 +803,14 @@ def make_plots():
     # methods_obj.plot_theta_wc()
 
     ## sensitivity
-    sensit_obj  = sensitivity(PATH_result)
+    # sensit_obj  = sensitivity(PATH_result)
     # sensit_obj.ss_vs_trans()
-    sensit_obj.leak_vs_run()
+    # sensit_obj.leak_vs_run()
 
     # print plt.get_figlabels()
     plt.show()
 
 
+# plt.style.use('seaborn-whitegrid')
 plt.style.use('seaborn')
 make_plots()

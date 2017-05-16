@@ -108,7 +108,7 @@ class InitSim(object):
                ('Seep', 0), ('Ebot' ,  0), ('Egw', 0),
                ### GROUNDWATER
                ('Node', 13326),
-               ('a1' , 0.00001), ('b1', 0), ('a2', 0), ('b2', 0), ('a3', 0),
+               ('a1' , 0.0000), ('b1', 0), ('a2', 0), ('b2', 0), ('a3', 0),
                ('Dsw', 0), ('Ebot', 0),
                ### JUNCTIONS
                # note elevation and maxdepth maybe updated and overwrittten
