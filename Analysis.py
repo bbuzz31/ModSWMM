@@ -170,7 +170,7 @@ class res_base(object):
             dict_fhd[slr] = (np.load(pickle_file))
         return dict_fhd
 
-    def _load_uzf(self):
+    def _load_uzf(self, kind=False):
         """ Load Pickled UZF Arrays """
         # ordered dict helps with plotting
         dict_uzf = OrderedDict()
@@ -183,7 +183,10 @@ class res_base(object):
                 tmp_dict[SLR] = np.load(leak_mat)
             # list of dictionary of scenario (0.0) : 74x51x549 matrix
             dict_uzf[var] = tmp_dict
-        return dict_uzf
+        try:
+            return dict_uzf[kind]
+        except:
+            return dict_uzf
 
     def save_cur_fig(self):
         """ Saves the current fig """
