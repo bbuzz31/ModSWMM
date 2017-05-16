@@ -22,7 +22,7 @@ class fmt_base(object):
         __              = self.make_ts()
         ___             = self.make_swmm_grid('heads'), self.make_swmm_grid('run')
         self.seasons    = ['Winter', 'Spring', 'Summer', 'Fall']
-
+            
     def make_scenarios_slr(self):
         """ Get Scenarios and SLR from Dirs """
         self.scenarios = [op.join(self.path, slr) for slr in os.listdir(self.path)

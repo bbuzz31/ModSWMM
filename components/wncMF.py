@@ -336,7 +336,7 @@ if __name__ == '__main__':
 
     params    = {'name'    : slr_name,            'days' : args['KPERS'],
                  'coupled' : args['--coupled'],   'ss'   : args['--steady'],
-                 'slr'     : args['--slr'],     'noleak' : 0,
+                 'slr'     : args['--slr'],     'noleak' : True,
                  'Verbose': args['--verbose']}
 
     if args['--steady']:
