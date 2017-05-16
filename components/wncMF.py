@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 """
-Run MODFLOW-NWT with FloPy Wrapper
+Run MODFLOW-2005 with FloPy Wrapper
 
 Usage:
-  wncNWT.py PATH KPERS [options]
+  wncMF.py PATH KPERS [options]
 
 Examples:
   Run a SS MF-ONLY model with 1 stress periods
-  wncNWT.py /Users/bb/Google_Drive/WNC/Coupled/May_SS 0
+  wncMF.py /Users/bb/Google_Drive/WNC/Coupled/May_SS 2
 
   Run a Transient MF model with 5 stress periods and 1m SLR
-  wncNWT.py . 5 --slr 1
+  wncMF.py . 5 --slr 1
 
 Arguments:
   PATH        Path .../Coupled/[month]
@@ -71,12 +71,12 @@ class WNC_Base(object):
         path_exe = self.params.get('path_exe', op.join('/', 'opt', 'local', 'bin'))
 
         if self.params['coupled']:
-            self.mf = flomf.Modflow(MODEL, exe_name=op.join(path_exe, 'NWT_BB'),
-                                        version='mfnwt', silent=False, verbose=False,
+            self.mf = flomf.Modflow(MODEL, exe_name=op.join(path_exe, 'MF_BB'),
+                                        version='mf2005', silent=False, verbose=False,
                                   external_path=op.join(self.path, 'MF', 'ext'))
         else:
-            self.mf = flomf.Modflow(MODEL, exe_name=op.join(path_exe, 'mfnwt'),
-                                        version='mfnwt',
+            self.mf = flomf.Modflow(MODEL, exe_name=op.join(path_exe, 'mf2005'),
+                                        version='mf2005',
                                   external_path=op.join(self.path, 'MF', 'ext'))
 
         if self.params['ss']:
@@ -159,10 +159,6 @@ class WNC_Inps(WNC_Base):
         self.last_col = len(self.df_mf.columns)
         self.nlays    = len(self.df_mf.filter(like='KX').columns)
 
-    def nwt(self):
-        nwt = flomf.ModflowNwt(self.mf, iprnwt=1)
-        return nwt
-
     def dis(self):
         delrc    = 200
         ztop     = self.df_mf['MODEL_TOP'].values.reshape(self.nrows, self.ncols);
@@ -187,13 +183,13 @@ class WNC_Inps(WNC_Base):
                                   strt=self.params.get('strt', 1), ichflg=True)
         return bas
 
-    def upw(self):
+    def lpf(self):
         hk  = self.df_mf.filter(like='KX').T.values.reshape(self.nlays, self.nrows, self.ncols)
         vk  = self.df_mf.filter(like='KZ').T.values.reshape(self.nlays, self.nrows, self.ncols)
-        upw = flomf.ModflowUpw(self.mf, laytyp=np.ones(self.nlays),
+        lpf = flomf.ModflowLpf(self.mf, laytyp=np.ones(self.nlays),
                                    layavg=np.ones(self.nlays)*2, hk=hk, vka=vk,
                                    sy=self.params.get('sy', 0.25))
-        return upw
+        return lpf
 
     def uzf(self):
         uzfbnd        = self.df_mf['UZF_IBND'].values.reshape(self.nrows, self.ncols)
@@ -246,7 +242,7 @@ class WNC_Inps(WNC_Base):
         return oc
 
     def pcg(self):
-        pcg = flomf.ModflowPcg(self.mf, mxiter=60, iter1=20, hclose=0.25, rclose=0.25);
+        pcg = flomf.ModflowPcg(self.mf, mxiter=60, iter1=20, hclose=1, rclose=1);
         return pcg
 
     def hob(self):
@@ -278,15 +274,15 @@ class WNC_Inps(WNC_Base):
 
     def write(self):
         """ Write MODFLOW inp files. Remove checks. """
-        # refactor with getattr
         inp_files = []
-        inp_files.append(self.nwt())
+        # refactor with getattr
         inp_files.append(self.dis())
         inp_files.append(self.bas())
-        inp_files.append(self.upw())
+        inp_files.append(self.lpf())
         inp_files.append(self.uzf())
         inp_files.append(self.chd())
         inp_files.append(self.oc())
+        inp_files.append(self.pcg())
         inp_files.append(self.hob())
 
         [mf_file.write_file() for mf_file in inp_files]
@@ -340,7 +336,7 @@ if __name__ == '__main__':
 
     params    = {'name'    : slr_name,            'days' : args['KPERS'],
                  'coupled' : args['--coupled'],   'ss'   : args['--steady'],
-                 'slr'     : args['--slr'],     'noleak' : 1,
+                 'slr'     : args['--slr'],     'noleak' : 0,
                  'Verbose': args['--verbose']}
 
     if args['--steady']:

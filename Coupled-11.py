@@ -369,11 +369,11 @@ def main(args):
     """ Run MODSWMM """
     slr, days = args
     InitObj   = InitSim(slr, days)
+    # run SS and create SWMM .inp
     InitObj.init()
-    InitObj   = InitSim(slr, days)
-    #
+    # start transient MF and SWMM sol
     RunSim(InitObj).run_coupled()
-    #
+    # save log, move results, pickle?
     FinishSim(InitObj).log()
     FinishSim(InitObj).store_results()
     # FinishSim(slr, days).pickles() # needs to go outside of the loop?
