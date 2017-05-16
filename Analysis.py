@@ -225,7 +225,8 @@ class summary(res_base):
         res_base.__init__(self, path_results)
         self.row, self.col  = row, col
         self.loc_1d         = bcpl.cell_num(self.row, self.col) + 10000
-    ##### May only need plot_ts_uzf_sums
+        self.arr_land_z     = np.load(op.join(self.path_data, 'Land_Z.npy'))
+    ##### May only need plot_ts_uzf_sums, and head frequencies
     ##### 2d head chg could be useful for sensitivity and/or calibration
 
     ### SWMM
@@ -331,7 +332,24 @@ class summary(res_base):
 
         df_uzf_run.resample('MS').mean().plot(subplots=False, title='UZF Runoff')
 
-    def plot_head_hist(self, bins=30):
+    def plot_hypsometry(self, bins=30):
+        """ Histogram of Elevations of Model Cells """
+        fig, axes       = plt.subplots()
+        arr_active      = np.where(self.arr_land_z <= 0, np.nan, self.arr_land_z)
+        arr_cln         = arr_active[~np.isnan(arr_active)]
+        n, bin_edges, _ = axes.hist(arr_cln, bins=bins, facecolor='blue',
+                        alpha=0.35, rwidth=0.55, align='mid', histtype='bar')
+        # make line of best fit
+        bin_middles = 0.5*(bin_edges[1:] + bin_edges[:-1])
+        # coeffs = np.polyfit(bin_middles, n, 3)
+        # x2 = np.arange(min(n)-1, max(n)+1, .01) #use more points for a smoother plot
+        # y2 = np.polyval(coeffs, x2) #Evaluates the polynomial for each x2 value
+        # axes.plot(x2, y2, label="deg=3")
+        axes.set_ylabel('Counts')
+        axes.set_xlabel('Elevation (m)')
+
+
+    def plot_head_hist(self, bins=3):
         """ Create a Histogram of Heads for each SLR Scenario """
         # dict_heads = self._load_swmm('heads')
         dict_heads = self._load_fhd()
@@ -343,19 +361,19 @@ class summary(res_base):
             arr_cln   = np.where(arr < 0, np.nan, arr) # for fhd
             arr_cln   = arr_cln[~np.isnan(arr_cln)].flatten()[154:-30] # for both
             # for converting absolute counts to between 0 1
-            # weights  = (np.ones_like(arr_cln)/len(arr_cln)) #* arr_cln / (arr_cln.max() - arr_cln.min())
+            weights  = (np.ones_like(arr_cln)/len(arr_cln)) #* arr_cln / (arr_cln.max() - arr_cln.min())
 
-            mean, std = arr_cln.mean(), arr_cln.std()
-            n, bin_edges, patches = axe[i].hist(arr_cln, bins=bins, normed=True,
-                            align='mid', rwidth=0.55,  #weights=weights,
+            mean, std       = arr_cln.mean(), arr_cln.std()
+            n, bin_edges, _ = axe[i].hist(arr_cln, bins=bins, #normed=True,
+                            align='mid', rwidth=0.55,  weights=weights,
                             histtype='bar', facecolor='green', alpha=0.35)
             # bin_middles = 0.5*(bin_edges[1:] + bin_edges[:-1])
             # axe[i].plot(bin_middles, n, 'r-', linewidth=2)
             colname          = 'SLR-{} (m)'.format(slr)
             df_pdfs[colname] = mpl.mlab.normpdf(bin_edges, mean, std)
-            l = axe[i].plot(bin_edges, df_pdfs[colname], color='maroon', linewidth=1)
+            # l = axe[i].plot(bin_edges, df_pdfs[colname], color='maroon', linewidth=1)
             axe[i].set_title('SLR: {} (m)'.format(slr))
-            axe[i].set_ylabel('Probability')
+            axe[i].set_ylabel('Percent Area')
             axe[1].set_xlabel('GW Head (m)')
             # axe[i].xaxis.set_ticks(np.arange(0, 8, 0.5))
 
@@ -779,6 +797,7 @@ def make_plots():
     # summary_obj.plot_ts_sys_var()
     # summary_obj.plot_slr_sys_sums()
     # summary_obj.plot_ts_uzf_sums()
+    # summary_obj.plot_hypsometry()
     summary_obj.plot_head_hist()
     # summary_obj.plot_2d_head_chg()
     # summary_obj.plot_head_contours()
