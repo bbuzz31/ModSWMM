@@ -701,10 +701,10 @@ def make_plots():
     rc_params()
 
     # summary
-    # summary_obj = summary(PATH_result)
+    summary_obj = summary(PATH_result)
     # summary_obj.plot_ts_sys_var()
     # summary_obj.plot_slr_sys_sums()
-    # summary_obj.plot_ts_uzf_sums()
+    summary_obj.plot_ts_uzf_sums()
     # summary_obj.plot_head_contours()
     # summary_obj.save_cur_fig()
 
@@ -720,8 +720,8 @@ def make_plots():
     # dtw_obj.plot_interesting()
 
     ## methods
-    methods_obj = methods(PATH_result)
-    methods_obj.plot_param_mf()
+    # methods_obj = methods(PATH_result)
+    # methods_obj.plot_param_mf()
     # methods_obj.plot_param_swmm()
     # methods_obj.plot_heads_1loc()
     # methods_obj.plot_theta_wc()
