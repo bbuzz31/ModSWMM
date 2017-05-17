@@ -16,7 +16,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-from components import bcpl, swmmtoolbox as swmtbx
+from components import bcpl
+from utils import swmmtoolbox as swmtbx
 
 class res_base(object):
     def __init__(self, path_result):
@@ -792,46 +793,42 @@ def rc_params():
 
 def make_plots():
     PATH_stor   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results')
-    PATH_result = ('{}_05-08').format(PATH_stor)
+    PATH_result = ('{}_05-15').format(PATH_stor)
     rc_params()
 
     # summary
     summary_obj = summary(PATH_result)
     # summary_obj.plot_ts_sys_var()
     # summary_obj.plot_slr_sys_sums()
-<<<<<<< HEAD
-    # summary_obj.plot_ts_uzf_sums()
+    summary_obj.plot_ts_uzf_sums()
     # summary_obj.plot_hypsometry()
     summary_obj.plot_head_hist()
     # summary_obj.plot_2d_head_chg()
-=======
-    summary_obj.plot_ts_uzf_sums()
->>>>>>> Add_Leak
-    # summary_obj.plot_head_contours()
+    summary_obj.plot_head_contours()
     # summary_obj.save_cur_fig()
 
     # runoff
-    # runoff_obj = runoff(PATH_result)
-    # runoff_obj.plot_area_vol()
-    # runoff_obj.plot_ts_sums()
-    # runoff_obj.plot_2d_chg_slr()
+    runoff_obj = runoff(PATH_result)
+    runoff_obj.plot_area_vol()
+    runoff_obj.plot_ts_sums()
+    runoff_obj.plot_2d_chg_slr()
 
     ## dtw
-    # dtw_obj    = dtw(PATH_result)
-    # dtw_obj.plot_area_days()
-    # dtw_obj.plot_interesting()
+    dtw_obj    = dtw(PATH_result)
+    dtw_obj.plot_area_days()
+    dtw_obj.plot_interesting()
 
     ## methods
-    # methods_obj = methods(PATH_result)
+    methods_obj = methods(PATH_result)
     # methods_obj.plot_param_mf()
     # methods_obj.plot_param_swmm()
-    # methods_obj.plot_heads_1loc()
-    # methods_obj.plot_theta_wc()
+    methods_obj.plot_heads_1loc()
+    methods_obj.plot_theta_wc()
 
     ## sensitivity
-    # sensit_obj  = sensitivity(PATH_result)
-    # sensit_obj.ss_vs_trans()
-    # sensit_obj.leak_vs_run()
+    sensit_obj  = sensitivity(PATH_result)
+    sensit_obj.ss_vs_trans()
+    sensit_obj.leak_vs_run()
 
     # print plt.get_figlabels()
     plt.show()

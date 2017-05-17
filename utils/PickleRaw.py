@@ -36,7 +36,7 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 
-import components.bcpl
+from  components import bcpl
 import PickleFmt, swmmtoolbox as swmtbx
 import flopy.utils.formattedfile as ff
 import flopy.utils.binaryfile as bf
@@ -180,7 +180,7 @@ class pickle_uzf(pickle_base):
                 # save separately so can load separately and faster
                 path_res = op.join(self.path_picks, '{}_{}.npy'.format(varnames[i], slr))
                 np.save(path_res, sys_mat)
-        print 'UZF arrays pickled to to: {}'.format(self.path_picks)
+        print 'UZF arrays pickled to: {}'.format(self.path_picks)
 
 class pickle_ext(pickle_base):
     def __init__(self, path_result):
@@ -291,10 +291,10 @@ if __name__ == '__main__':
         end = time.time()
         print 'Pickles made in ~ {} min'.format(round((end-start)/60., 2))
 
+    elif args['--fmt']:
+        PickleFmt.main(PATH_result);
     else:
         print 'Pickling SWMM Soil to {} ... '.format(path_picks)
         pool = Pool(processes=len(scenarios))
         res = pool.map(_sub_var, zip(scenarios, ['soil']*len(scenarios),
                                [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
-    if args['--fmt']:
-        picklefmt.main()

@@ -22,7 +22,7 @@ class fmt_base(object):
         __              = self.make_ts()
         ___             = self.make_swmm_grid('heads'), self.make_swmm_grid('run')
         self.seasons    = ['Winter', 'Spring', 'Summer', 'Fall']
-            
+
     def make_scenarios_slr(self):
         """ Get Scenarios and SLR from Dirs """
         self.scenarios = [op.join(self.path, slr) for slr in os.listdir(self.path)
@@ -248,11 +248,13 @@ def main(path_result):
     dtw = fmt_dtw(path_result)
     dtw.make_df_dtw_season()
     dtw.make_df_dtw_area(dtw=0.1524)
+    print ('Pickled DTW Results')
 
     run = fmt_run(path_result)
     run.make_df_vol_area(vol=0.01)
     run.make_df_run_season()
+    print ('Pickled Runoff Results')
 
 if __name__ == '__main__':
-    PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-14')
+    # PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-14')
     main(PATH_result)
