@@ -39,7 +39,7 @@ class WNC_Base(object):
         # retrieve head and soil moisture from steady state files (these only have subcatchs);
         mat_mf       = bcpl.mf_get_all(self.path, 0, **self.params) #
         self.df_mf   = pd.DataFrame(mat_mf, index=mat_mf[:,4],
-              columns=['ROW', 'COL','HEAD', 'THETA', 'IDX']).drop('IDX', axis=1)
+              columns=['ROW', 'COL','HEAD', 'THETA', 'LEAK', 'IDX']).drop('IDX', axis=1)
         try:
             self.df_mf.index = self.df_subs.index
         except:

@@ -34,7 +34,9 @@ Notes:
 
 """
 
-from components import wncNWT, wncSWMM, swmm, bcpl, picklefmt
+from components import wncNWT, wncSWMM, swmmSOL as swmm, bcpl
+# from utils import picklefmt
+# from utils import picklefmt
 import BB
 import os
 import os.path as op
@@ -59,7 +61,7 @@ class InitSim(object):
     Run MF SS
     Create SWMM Input File
     """
-    def __init__(self, slr, days, ext='_DEV'):
+    def __init__(self, slr, days, ext='_1'):
         self.slr        = slr
         self.days       = days
         self.verbose    = 4
@@ -108,7 +110,7 @@ class InitSim(object):
                ('Seep', 0), ('Ebot' ,  0), ('Egw', 0),
                ### GROUNDWATER
                ('Node', 13326),
-               ('a1' , 0.00001), ('b1', 0), ('a2', 0), ('b2', 0), ('a3', 0),
+               ('a1' , 0.0000), ('b1', 0), ('a2', 0), ('b2', 0), ('a3', 0),
                ('Dsw', 0), ('Ebot', 0),
                ### JUNCTIONS
                # note elevation and maxdepth maybe updated and overwrittten
@@ -391,7 +393,7 @@ if __name__ == '__main__':
 
     if args['--dev']:
         # short, 0.0 only simulation
-        InitObj = InitSim(SLR[0], args['KPERS'])
+        InitObj = InitSim(SLR[0], args['KPERS'], ext='_DEV')
         InitObj.init()
         RunSim(InitObj).run_coupled()
 
@@ -403,4 +405,4 @@ if __name__ == '__main__':
 
     else:
         # run MF SS and create SWMM .INP
-        InitSim(SLR[0], args['KPERS']).init()
+        InitSim(SLR[0], args['KPERS'], ext='_SS').init()
