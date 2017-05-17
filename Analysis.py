@@ -799,10 +799,14 @@ def make_plots():
     summary_obj = summary(PATH_result)
     # summary_obj.plot_ts_sys_var()
     # summary_obj.plot_slr_sys_sums()
+<<<<<<< HEAD
     # summary_obj.plot_ts_uzf_sums()
     # summary_obj.plot_hypsometry()
     summary_obj.plot_head_hist()
     # summary_obj.plot_2d_head_chg()
+=======
+    summary_obj.plot_ts_uzf_sums()
+>>>>>>> Add_Leak
     # summary_obj.plot_head_contours()
     # summary_obj.save_cur_fig()
 

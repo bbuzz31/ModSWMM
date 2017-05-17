@@ -2,12 +2,23 @@
 import BB
 import os
 import os.path as op
+<<<<<<< HEAD
 
 import numpy as np
 import pandas as pd
 
 import flopy.utils.formattedfile as ff
 
+=======
+from collections import OrderedDict
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import flopy.utils.formattedfile as ff
+
+from components import bcpl, swmmtoolbox as swmtbx
+
+>>>>>>> Add_Leak
 class ss_base(object):
     def __init__(self, path_result):
         self.path       = path_result
@@ -18,6 +29,21 @@ class ss_base(object):
         self.df_swmm    = pd.read_csv(op.join(self.path_data, 'SWMM_subs.csv'),
                                                            index_col='Zone')
         self.subs       = self.df_swmm.index.values
+<<<<<<< HEAD
+=======
+        if op.isdir(self.path_picks):
+            self.df_sys     = pd.read_pickle(op.join(self.path_picks, 'swmm_sys.df'))#.loc['2012-01-01-00':, :]
+            self.slr        = BB.uniq([float(slr.rsplit('_', 1)[1]) for slr
+                                                            in self.df_sys.columns])
+            self.sys_vars   = BB.uniq([slr.rsplit('_', 1)[0] for slr in self.df_sys.columns])
+
+            self.ts_day     = self.df_sys.resample('D').first().index
+            self.ts_hr      = self.df_sys.index
+            self.st         = '2011-12-01-00'
+            self.end        = '2012-11-30-00'
+            # self.ts_hr    = self.ts_hr[3696:]
+            # self.ts_day   = self.ts_day[154:]
+>>>>>>> Add_Leak
 
     def ts_all(self, param, loc=False, slr=0.0, dates=[0, -0], plot=False):
         """
@@ -179,7 +205,11 @@ class ss_base(object):
             return mat.reshape(74,51)
 
         # parse series
+<<<<<<< HEAD
         else:
+=======
+        elif isinstance(ser, pd.Series):
+>>>>>>> Add_Leak
             idx = ser.index
             if not np.nansum(ser) == 0:
                 for i in idx:
@@ -189,6 +219,17 @@ class ss_base(object):
                     mat[int(i)-10001] = 1
 
             return mat.reshape(74,51)
+<<<<<<< HEAD
+=======
+        # parse list
+        elif isinstance(ser, list):
+            for i in ser:
+                mat[int(i) - 10001] = 1
+            return mat.reshape(74,51)
+
+        else:
+            raise ValueError('Input should be Array, Series, or List')
+>>>>>>> Add_Leak
 
 class surf_leak(ss_base):
     def __init__(self, path_result):
@@ -199,6 +240,10 @@ class surf_leak(ss_base):
         Get always dry, always wet, and sometimes leaking locations.
         Return a list with 3 dictionarys and one data frame.
             Dictionarys have keys of SLR
+<<<<<<< HEAD
+=======
+                Vals are list of 10001 indexed locations
+>>>>>>> Add_Leak
             DF has number of cells dry, wet, leaky, and a percent of always wet.
         """
         ### always dry
@@ -206,6 +251,7 @@ class surf_leak(ss_base):
         wet_dict = {}
         sometimes_dict = {}
 
+<<<<<<< HEAD
         for slr, mat in self._load_uzf['surf_leak'].items():
             print slr
             print mat.shape
@@ -240,6 +286,38 @@ class surf_leak(ss_base):
                                                                   invert=True))]
             sometimes_dict[slr] = leakage
             #print leaking
+=======
+        for slr, mat in self._load_uzf('surf_leak').items():
+            ### always dry
+            # sum through time
+            dry           = mat.sum(axis=0)
+            # if leak is < 0 it experienced leakage; gets a 1 if dry
+            dry_bin       = np.where(dry < 0, 0, 1)
+            dry_ser       = pd.Series(dry_bin.flatten())
+            dry_ser.index = dry_ser.index+10001
+            always        = dry_ser[dry_ser > 0]
+            dry_dict[slr] = always.index.tolist()
+            ### always wet
+            wet_locs      = np.ones([mat.shape[1], mat.shape[2]])
+            for i in range(mat.shape[2]):
+                # iterate through time, if leak multiply 1, else multiply by 0
+                wet_locs[:, :] *= np.where(mat[i, :, :] < 0, 1, 0)
+            wet_bin       = np.where(wet_locs > 0, 1, 0)
+            wet_ser       = pd.Series(wet_bin.flatten())
+            # careful; use 10001 to properly adjust for modflow 1 index
+            wet_ser.index = wet_ser.index+10001
+            always        = wet_ser[wet_ser > 0]
+            wet_dict[slr] = always.index.tolist()
+            ### sometimes
+
+        idx         = np.arange(10001, 10001+(74*51), 1)
+        total_cells = 1459
+        num_mat     = np.ones([len(self.slr), 4])
+        for i, slr in enumerate(self.slr):
+            leakage = idx[(np.in1d(idx, np.hstack([dry_dict[slr], wet_dict[slr]]),
+                                                                  invert=True))]
+            sometimes_dict[slr] = leakage
+>>>>>>> Add_Leak
             num_mat[i][0] = slr
             num_mat[i][1] = len(dry_dict[slr])
             num_mat[i][2] = len(wet_dict[slr])
@@ -253,7 +331,21 @@ class surf_leak(ss_base):
 
         return [dry_dict, wet_dict, sometimes_dict, wet_df]
 
+<<<<<<< HEAD
     def plot_2d_leaks(self, day=0):
+=======
+    def plot_2d_leaks_perm(self, which='dry'):
+        """ Plot Permanetly Dry or Permanently Leaking for each SLR """
+        dict_locs = self.leaking()[1] if which== 'wet' else self.leaking()[0]
+        fig, axes = plt.subplots(ncols=3, figsize=(16, 9))
+        title     = plt.suptitle('locations permanently {} (surf leak)'.format(which))
+        axe       = axes.ravel()
+        for i, (slr, lst) in enumerate(dict_locs.items()):
+            arr_grid = self.fill_grid(lst)
+            axe[i].imshow(arr_grid)
+
+    def plot_2d_leaks_time(self, day=0):
+>>>>>>> Add_Leak
         """
         Plots all locs that leak at specific day, all SLR.
         Can use to to compare leak locations with heads/land surface in fhd
@@ -304,7 +396,42 @@ class surf_leak(ss_base):
         print df_active.describe()
         print 'Count of heads > land: {}'.format(len(df_dtw_neg))
 
+<<<<<<< HEAD
 PATH_ss  = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled', 'May_SS', 'MF')
 PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-08')
 # surf_leak(PATH_ss).ss_dtw()
 surf_leak(PATH_res).leaking()
+=======
+class runoff(ss_base):
+    def __init__(self, path_result, row, col):
+        super(runoff, self).__init__(path_result)
+        self.row    = row
+        self.col    = col
+        self.loc_1d = bcpl.cell_num(self.row, self.col) + 10000
+        print self.loc_1d
+
+    def ts_loc(self):
+        """ Plot ts of runoff at one location, all SLR """
+        df_ts     = pd.DataFrame(index=self.ts_hr)
+        fig, axes = plt.subplots(ncols=2, figsize=(16,9))
+
+        title     = plt.suptitle('Runoff at: {}'.format(self.loc_1d))
+
+        for slr in self.slr:
+            df_ts['run_{}'.format(slr)] = self.ts_all('run', self.loc_1d, slr).values
+            df_ts['head_{}'.format(slr)] = self.ts_all('head', self.loc_1d, slr).values
+
+        df_run = df_ts.filter(like='run').resample('D').sum()
+        df_head = df_ts.filter(like='head').resample('D').mean()
+        df_run.plot(ax=axes[0])
+        df_head.plot(ax=axes[1])
+
+plt.style.use('seaborn')
+
+PATH_ss  = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled', 'May_SS', 'MF')
+PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-08')
+# surf_leak(PATH_ss).ss_dtw()
+# surf_leak(PATH_res).plot_2d_leaks_perm()
+runoff(PATH_res, 18, 28).ts_loc()
+plt.show()
+>>>>>>> Add_Leak

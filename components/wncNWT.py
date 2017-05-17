@@ -7,7 +7,7 @@ Usage:
 
 Examples:
   Run a SS MF-ONLY model with 1 stress periods
-  wncNWT.py /Users/bb/Google_Drive/WNC/Coupled/May_1
+  wncNWT.py /Users/bb/Google_Drive/WNC/Coupled/May_SS 0
 
   Run a Transient MF model with 5 stress periods and 1m SLR
   wncNWT.py . 5 --slr 1
@@ -24,6 +24,8 @@ Options:
   -h, --help          Print this message
 
 Notes:
+  SS Only will run 2 steps always, which don't differ from one step
+  SS Only will result in diff soil moisture than trs (trs used for coupled)
   Directory with csv files  must be at <path>/Data. Can be symlink.
   Data is prepared in dataprep.py
 """
@@ -51,6 +53,12 @@ class WNC_Base(object):
 
     def load_data(self):
         """ load data from csvs """
+        # check here and one directory up
+        if not op.isdir(self.path_data):
+            self.path_data = op.join(op.dirname(self.path), 'Data')
+            if not op.isdir(self.path_data):
+                raise OSError('Data Directory not Found')
+
         self.df_mf  = pd.read_csv(op.join(self.path_data, 'MF_GRID.csv'), index_col='FID')
         self.df_chd = pd.read_csv(op.join(self.path_data, 'MF_CHD.csv'), index_col='Zone')
         # for uzf gages
@@ -270,6 +278,7 @@ class WNC_Inps(WNC_Base):
 
     def write(self):
         """ Write MODFLOW inp files. Remove checks. """
+        # refactor with getattr
         inp_files = []
         inp_files.append(self.nwt())
         inp_files.append(self.dis())
@@ -326,14 +335,15 @@ if __name__ == '__main__':
                         ignore_extra_keys=True)
 
     args      = typecheck.validate(arguments)
-
+    PATH      = op.abspath(args['PATH'])
     slr_name  = 'SLR-{}_{}'.format(args['--slr'], time.strftime('%m-%d'))
 
     params    = {'name'    : slr_name,            'days' : args['KPERS'],
                  'coupled' : args['--coupled'],   'ss'   : args['--steady'],
-                 'slr'     : args['--slr'],     'Verbose': args['--verbose']}
+                 'slr'     : args['--slr'],     'noleak' : 0,
+                 'Verbose': args['--verbose']}
 
     if args['--steady']:
-        main_SS(args['PATH'], **params)
+        main_SS(PATH, **params)
     else:
-        main_TRS(args['PATH'], **params)
+        main_TRS(PATH, **params)

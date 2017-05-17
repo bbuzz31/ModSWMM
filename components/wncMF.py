@@ -336,7 +336,11 @@ if __name__ == '__main__':
 
     params    = {'name'    : slr_name,            'days' : args['KPERS'],
                  'coupled' : args['--coupled'],   'ss'   : args['--steady'],
+<<<<<<< HEAD
                  'slr'     : args['--slr'],     'noleak' : 0,
+=======
+                 'slr'     : args['--slr'],     'noleak' : True,
+>>>>>>> Add_Leak
                  'Verbose': args['--verbose']}
 
     if args['--steady']:

@@ -6,6 +6,7 @@ Brett Buzzanga, 2017
 import BB
 
 import os
+import os.path as op
 import time
 import re
 import linecache
@@ -13,6 +14,7 @@ import numpy as np
 import pandas as pd
 
 import flopy.utils.formattedfile as ff
+import flopy.utils.binaryfile as bf
 import swmmSOL as swmm
 
 def cell_num(row, col, n_cols=51, show=False):
@@ -82,7 +84,14 @@ def mf_get_all(path_root, mf_step, **params):
     except:
         raise SystemError(mf_model+'.fhd does not exist.\nCheck paths')
 
+    try:
+        uzf = bf.CellBudgetFile(mf_model + '.uzfcb2.bin', precision='single')
+    except:
+        uzf = bf.CellBudgetFile(mf_model + '.uzfcb2.bin', precision='double')
+
     head_fhd      = hds.get_data(totim=mf_step+1, mflay=0)
+    uzf_data      = uzf.get_data(text='SURFACE LEAKAGE', totim=mf_step+1)[0]
+
     arr_surf      = np.load(os.path.join(path_root, 'Data', 'Land_Z.npy')).reshape(head_fhd.shape)
     # intialize numpy arrays that will get updated based on row/col location
     index         = np.linspace(10001, 10000 + head_fhd.size, head_fhd.size, dtype=int)
@@ -147,7 +156,7 @@ def mf_get_all(path_root, mf_step, **params):
     row_np    = row_np + 1
     col_np    = col_np + 1
     # stack 1ds into multidimensional nd array for pandas columns to be correct
-    to_stack  = [row_np, col_np, head_fhd, theta_uzfb]
+    to_stack  = [row_np, col_np, head_fhd, theta_uzfb, uzf_data]
     unraveled = [each.ravel() for each in to_stack]
     stacked   = np.column_stack(unraveled)
     unraveled.append(index)
@@ -156,10 +165,6 @@ def mf_get_all(path_root, mf_step, **params):
     # drop non subcatchments (where row is nan)
     mf_subs    = stacked[~np.isnan(stacked[:,0])]
 
-    # DEPRECATED; make dataframe
-    # mf_all    = pd.DataFrame(stacked, columns=['ROW', 'COL', 'HEAD', 'THETA'])
-    # mf_subs   = mf_all.dropna(subset=['ROW', 'COL'])
-    # mf_subs.index += 10001
     return mf_subs
 
 def swmm_get_all(steps, cells, mf_done, constants, mf_len=3774):
@@ -228,21 +233,20 @@ def swmm_is_done(f_path, kper, f_n_root='swmm_done', ext='.txt', verb_lvl=0):
 def swmm_set_all(data4swmm):
     """
     Purpose:
-        set head/theta calculated in MF to SWMM
+        set head/theta/leak calculated in MF to SWMM
     Args:
-        data4swmm: pd.Dfwith cols HEAD & THETA; correct idx (from mf_get_all)
+        data4swmm: arr size len(subcatchs) x 6
+                   cols: row, col, head, theta, leak, index (index never used)
     Return:
         Nothing
     Notes:
-        Just a wrapper around swmm.setGW
-
+        Wrapper around swmm.setGW
     """
-    ### convert dataframe to matrix for faster accessing
-
-    for i, cell in enumerate(data4swmm[:, 4]):
+    for i, cell in enumerate(data4swmm[:, 5]):
         loc = str(int(cell))
         swmm.setGW(loc, swmm.HEAD,  swmm.SI, data4swmm[i,2])
         swmm.setGW(loc, swmm.THETA, swmm.SI, data4swmm[i,3])
+        swmm.setGW(loc, swmm.LEAK,  swmm.SI, data4swmm[i,4])
         # if loc == '10004':
             # print data4swmm[i, 3]
     return
@@ -261,3 +265,27 @@ def write_array(f_path, f_n_root, kper, data, ext='.ref', fmt='%15.6E'):
     f_name = os.path.join(f_path, '{}{}{}'.format(f_n_root, kper, ext))
     with open(f_name, 'w') as fh:
         np.savetxt(fh, data, fmt=fmt, delimiter='')
+
+def get_leak():
+    path = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled', 'May_Dev', 'Child_0.0', 'MF')
+    path_uzf = op.join(path, 'SLR-0.0_05-16.uzfcb2.bin')
+    mf_model = op.join(path, 'SLR-0.0_05-16')
+    try:
+        uzfobj = bf.CellBudgetFile(path_uzf, precision='single')
+    except:
+        uzfobj = bf.CellBudgetFile(path_uzf, precision='double')
+    uzf_data      = uzfobj.get_data(text='SURFACE LEAKAGE', totim=0)
+    # sys_mat       = np.zeros([len(self.ts_day), 74, 51])
+    # for j in range(len(self.ts_day)):
+        # sys_mat[j,:,:] = uzf_data[j]
+    # save separately so can load separately and faster
+    print type(uzf_data)
+    # print uzf_data[0][uzf_data[0] <0]
+    try:
+        hds    = ff.FormattedHeadFile(mf_model + '.fhd', precision='double')
+    except:
+        raise SystemError(mf_model+'.fhd does not exist.\nCheck paths')
+
+    head_fhd      = hds.get_data(totim=3, mflay=0)
+    # print head_fhd.shape
+# get_leak()

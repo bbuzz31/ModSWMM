@@ -15,7 +15,7 @@ Arguments:
 
 Options:
   -c, --coupled=BOOL  Run a Coupled Simulation | SWMM input file    [default: 1]
-  -d, --debug=BOOL    Run a Coupled Sim for 0.0 only, dont move dir [default: 0]
+  -d, --dev=BOOL      Run a Coupled Sim for 0.0 only, dont move dir [default: 0]
   -h, --help          Print this message
 
 Purpose:
@@ -34,7 +34,9 @@ Notes:
 
 """
 
-from components import wncNWT, wncSWMM, swmm, bcpl, picklefmt
+from components import wncNWT, wncSWMM, swmmSOL as swmm, bcpl
+# from utils import picklefmt
+# from utils import picklefmt
 import BB
 import os
 import os.path as op
@@ -59,7 +61,7 @@ class InitSim(object):
     Run MF SS
     Create SWMM Input File
     """
-    def __init__(self, slr, days, ext=''):
+    def __init__(self, slr, days, ext='_1'):
         self.slr        = slr
         self.days       = days
         self.verbose    = 4
@@ -70,7 +72,7 @@ class InitSim(object):
         self.path_child = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled',
                                 time.strftime('%b')+ext, 'Child_{}'.format(slr))
         self.path_data  = op.join(self.path_child, 'Data')
-        self.path_res   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-14')
+        self.path_res   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-17')
         self.start      = time.time()
 
     def mf_params(self):
@@ -229,6 +231,9 @@ class RunSim(object):
 
             # set MF values to SWMM
             bcpl.swmm_set_all(mf_step_all)
+            # wait = True
+            # while wait:
+                # time.sleep(10)
 
         errors = swmm.finish()
         self._debug('swmm_done', STEP_mf, True, errors)
@@ -369,11 +374,11 @@ def main(args):
     """ Run MODSWMM """
     slr, days = args
     InitObj   = InitSim(slr, days)
+    # run SS and create SWMM .inp
     InitObj.init()
-    InitObj   = InitSim(slr, days)
-    #
+    # start transient MF and SWMM sol
     RunSim(InitObj).run_coupled()
-    #
+    # save log, move results, pickle?
     FinishSim(InitObj).log()
     FinishSim(InitObj).store_results()
     # FinishSim(slr, days).pickles() # needs to go outside of the loop?
@@ -381,14 +386,14 @@ def main(args):
 if __name__ == '__main__':
     arguments = docopt(__doc__)
     typecheck = Schema({'KPERS'   : Use(int),  '--coupled' : Use(int),
-                        '--debug' : Use(int)}, ignore_extra_keys=True)
+                        '--dev' : Use(int)}, ignore_extra_keys=True)
     # this is the test
     args = typecheck.validate(arguments)
     SLR = [0.0, 1.0, 2.0]
 
-    if args['--debug']:
+    if args['--dev']:
         # short, 0.0 only simulation
-        InitObj = InitSim(SLR[0], 2)
+        InitObj = InitSim(SLR[0], args['KPERS'], ext='_DEV')
         InitObj.init()
         RunSim(InitObj).run_coupled()
 
@@ -400,4 +405,4 @@ if __name__ == '__main__':
 
     else:
         # run MF SS and create SWMM .INP
-        InitSim(SLR[0], args['KPERS']).init()
+        InitSim(SLR[0], args['KPERS'], ext='_SS').init()
