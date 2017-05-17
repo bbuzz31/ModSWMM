@@ -34,9 +34,9 @@ Notes:
 
 """
 
-from components import wncNWT, wncSWMM, swmmSOL as swmm, bcpl
-# from utils import picklefmt
-# from utils import picklefmt
+from components import wncNWT, wncSWMM, bcpl, swmmSOL as swmm, 
+from utils import PickleRaw, PickleFmt
+
 import BB
 import os
 import os.path as op
