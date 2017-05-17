@@ -6,6 +6,7 @@ Brett Buzzanga, 2017
 import BB
 
 import os
+import os.path as op
 import time
 import re
 import linecache
@@ -13,6 +14,7 @@ import numpy as np
 import pandas as pd
 
 import flopy.utils.formattedfile as ff
+import flopy.utils.binaryfile as bf
 import swmmSOL as swmm
 
 def cell_num(row, col, n_cols=51, show=False):
@@ -261,3 +263,27 @@ def write_array(f_path, f_n_root, kper, data, ext='.ref', fmt='%15.6E'):
     f_name = os.path.join(f_path, '{}{}{}'.format(f_n_root, kper, ext))
     with open(f_name, 'w') as fh:
         np.savetxt(fh, data, fmt=fmt, delimiter='')
+
+def get_leak():
+    path = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled', 'May_Dev', 'Child_0.0', 'MF')
+    path_uzf = op.join(path, 'SLR-0.0_05-16.uzfcb2.bin')
+    mf_model = op.join(path, 'SLR-0.0_05-16')
+    try:
+        uzfobj = bf.CellBudgetFile(path_uzf, precision='single')
+    except:
+        uzfobj = bf.CellBudgetFile(path_uzf, precision='double')
+    uzf_data      = uzfobj.get_data(text='SURFACE LEAKAGE')
+    # sys_mat       = np.zeros([len(self.ts_day), 74, 51])
+    # for j in range(len(self.ts_day)):
+        # sys_mat[j,:,:] = uzf_data[j]
+    # save separately so can load separately and faster
+    print uzf_data[0].shape
+    # print uzf_data[0][uzf_data[0] <0]
+    try:
+        hds    = ff.FormattedHeadFile(mf_model + '.fhd', precision='double')
+    except:
+        raise SystemError(mf_model+'.fhd does not exist.\nCheck paths')
+
+    head_fhd      = hds.get_data(totim=3, mflay=0)
+    print head_fhd.shape
+# get_leak()
