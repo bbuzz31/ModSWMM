@@ -34,7 +34,7 @@ Notes:
 
 """
 
-from components import wncNWT, wncSWMM, bcpl, swmmSOL as swmm, 
+from components import wncNWT, wncSWMM, bcpl, swmmSOL as swmm 
 from utils import PickleRaw, PickleFmt
 
 import BB

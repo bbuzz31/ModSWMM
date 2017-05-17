@@ -36,7 +36,8 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 
-import bcpl, picklefmt, swmmtoolbox as swmtbx
+import components.bcpl
+import PickleFmt, swmmtoolbox as swmtbx
 import flopy.utils.formattedfile as ff
 import flopy.utils.binaryfile as bf
 #
@@ -206,7 +207,7 @@ class pickle_ext(pickle_base):
         ext_sys.to_pickle(path_res)
         print 'DataFrame pickled to: {}'.format(path_res)
 
-### multiprocessing cannot be class methods
+### multiprocessing cannot use class methods
 def _ts_heads(args):
     """ Pull heads from fhd file in parallel """
     scenario, path_pickle = args
