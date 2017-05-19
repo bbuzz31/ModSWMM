@@ -15,6 +15,7 @@ import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from matplotlib.ticker import FormatStrFormatter
 
 from components import bcpl
 from utils import swmmtoolbox as swmtbx
@@ -347,23 +348,22 @@ class summary(res_base):
 
         df_uzf_run.resample('MS').mean().plot(subplots=False, title='UZF Runoff')
 
-    def plot_hypsometry(self, bins=30):
+    def plot_hypsometry(self, bins=50):
         """ Histogram of Elevations of Model Cells """
         fig, axes       = plt.subplots()
         arr_active      = np.where(self.arr_land_z <= 0, np.nan, self.arr_land_z)
         arr_cln         = arr_active[~np.isnan(arr_active)]
-        n, bin_edges, _ = axes.hist(arr_cln, bins=bins, facecolor='blue',
-                        alpha=0.35, rwidth=0.55, align='mid', histtype='bar')
-        # make line of best fit
-        bin_middles = 0.5*(bin_edges[1:] + bin_edges[:-1])
-        # coeffs = np.polyfit(bin_middles, n, 3)
-        # x2 = np.arange(min(n)-1, max(n)+1, .01) #use more points for a smoother plot
-        # y2 = np.polyval(coeffs, x2) #Evaluates the polynomial for each x2 value
-        # axes.plot(x2, y2, label="deg=3")
-        axes.set_ylabel('Counts')
-        axes.set_xlabel('Elevation (m)')
+        n, bin_edges, _ = axes.hist(arr_cln, bins=bins, facecolor='darkblue',
+                        alpha=0.825, rwidth=0.55, align='left', histtype='bar')
 
-
+        axes.set_xlabel('Elevation (m)')#, labelpad=20)
+        axes.set_ylabel('Counts', labelpad=20)
+        # format ticks
+        axes.xaxis.set_ticks(np.linspace(0.0, 9.0, 10))
+        axes.xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
+        axes.set_xlim(-0.25, 8.25)
+        fig.set_label('hypsometry')
+        return fig
     def plot_head_hist(self, bins=30):
         """ Create a Histogram of Heads for each SLR Scenario """
         # dict_heads = self._load_swmm('heads')
@@ -796,7 +796,7 @@ def rc_params():
     mpl.rcParams['axes.labelsize']   = 11
     mpl.rcParams['savefig.dpi']      = 1000
     mpl.rcParams['savefig.format']   = 'eps'
-    # matplotlib.rcParams['figure.figsize']   = (18, 12) # for saving
+    # mpl.rcParams['figure.figsize']   = (18, 12) # for saving
     # matplotlib.rcParams['axes.labelweight'] = 'bold'
     for param in mpl.rcParams.keys():
         # print param
