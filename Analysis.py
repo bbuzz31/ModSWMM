@@ -27,8 +27,8 @@ class res_base(object):
                                                            'Coupled', 'Data')
         self.path_fig   = op.join(self.path, 'Figures')
         self.df_sys     = pd.read_pickle(op.join(self.path_picks, 'swmm_sys.df'))#.loc['2012-01-01-00':, :]
-        self.slr        = BB.uniq([float(slr.rsplit('_', 1)[1]) for slr
-                                                        in self.df_sys.columns])
+        self.slr_names  = self._get_slr()
+        self.slr        = sorted(self.slr_names)
         self.sys_vars   = BB.uniq([slr.rsplit('_', 1)[0] for slr in self.df_sys.columns])
 
         self.ts_day     = self.df_sys.resample('D').first().index
@@ -56,10 +56,8 @@ class res_base(object):
         Returns:
             Pandas dataframe with datetime index
         """
-        name = 'SLR-{}_{}'.format(slr, op.basename(self.path).split('_')[1])
-        # print name
-
-        out_file = op.join(self.path, name, '{}.out'.format(name))
+        slr_name = self.slr_names[slr]
+        out_file = op.join(self.path, slr_name, '{}.out'.format(slr_name))
         # map parameters to type, individual code, units (for plot), system code
         param_map = {'precip' : ['subcatchment,', ',0', 'mm', ',1'],
                      'flow'   : ['link,', ',2', 'm/s'],
@@ -93,7 +91,8 @@ class res_base(object):
         gage_ext = op.splitext(self._find_gage(row, col))[1]
         df_all   = pd.DataFrame(index=self.ts_day)
         for slr in self.slr:
-            slr_name  = 'SLR-{}_{}'.format(slr, op.basename(self.path).split('_')[1])
+            """ ======================================================== FIX """
+            slr_name  = self.slr_names[slr]
             path_gage = op.join(self.path, slr_name, slr_name+gage_ext)
             ### pull data from file
             data = []
@@ -129,8 +128,8 @@ class res_base(object):
 
     def _find_gage(self, row, col):
         """ Find the gage file for a specific location. Give 0 idx. """
-        slr_name = 'SLR-{}_{}'.format(self.slr[0], op.basename(self.path).split('_')[1])
-        regex = re.compile('({}.uzf[0-9]+)'.format(slr_name))
+        slr_name   = self.slr_names[0.0]
+        regex      = re.compile('({}.uzf[0-9]+)'.format(slr_name))
         gage_files = [op.join(self.path, slr_name, uzfile) for uzfile
                                 in os.listdir(op.join(self.path, slr_name))
                                 if regex.search(uzfile)]
@@ -188,6 +187,18 @@ class res_base(object):
             return dict_uzf[kind]
         except:
             return dict_uzf
+
+    def _get_slr(self):
+        """
+        Get the correct SLR Name from the Directories
+        Return dict of SLR: Slr Name
+        """
+        dict_slrnames = {}
+        for directory in os.listdir(self.path):
+            if directory.startswith('SLR'):
+                slr = float(directory.split('-')[1][:3])
+                dict_slrnames[slr] = directory
+        return dict_slrnames
 
     def save_cur_fig(self):
         """ Saves the current fig """
@@ -353,7 +364,7 @@ class summary(res_base):
         axes.set_xlabel('Elevation (m)')
 
 
-    def plot_head_hist(self, bins=3):
+    def plot_head_hist(self, bins=30):
         """ Create a Histogram of Heads for each SLR Scenario """
         # dict_heads = self._load_swmm('heads')
         dict_heads = self._load_fhd()
@@ -793,42 +804,42 @@ def rc_params():
 
 def make_plots():
     PATH_stor   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results')
-    PATH_result = ('{}_05-15').format(PATH_stor)
+    PATH_result = ('{}_05-18').format(PATH_stor)
     rc_params()
 
     # summary
     summary_obj = summary(PATH_result)
     # summary_obj.plot_ts_sys_var()
     # summary_obj.plot_slr_sys_sums()
-    summary_obj.plot_ts_uzf_sums()
-    # summary_obj.plot_hypsometry()
-    summary_obj.plot_head_hist()
+    # summary_obj.plot_ts_uzf_sums()
+    summary_obj.plot_hypsometry()
+    # summary_obj.plot_head_hist()
     # summary_obj.plot_2d_head_chg()
-    summary_obj.plot_head_contours()
+    # summary_obj.plot_head_contours()
     # summary_obj.save_cur_fig()
 
     # runoff
-    runoff_obj = runoff(PATH_result)
-    runoff_obj.plot_area_vol()
-    runoff_obj.plot_ts_sums()
-    runoff_obj.plot_2d_chg_slr()
-
-    ## dtw
-    dtw_obj    = dtw(PATH_result)
-    dtw_obj.plot_area_days()
-    dtw_obj.plot_interesting()
-
-    ## methods
-    methods_obj = methods(PATH_result)
-    # methods_obj.plot_param_mf()
-    # methods_obj.plot_param_swmm()
-    methods_obj.plot_heads_1loc()
-    methods_obj.plot_theta_wc()
-
-    ## sensitivity
-    sensit_obj  = sensitivity(PATH_result)
-    sensit_obj.ss_vs_trans()
-    sensit_obj.leak_vs_run()
+    # runoff_obj = runoff(PATH_result)
+    # runoff_obj.plot_area_vol()
+    # runoff_obj.plot_ts_sums()
+    # runoff_obj.plot_2d_chg_slr()
+    #
+    # ## dtw
+    # dtw_obj    = dtw(PATH_result)
+    # dtw_obj.plot_area_days()
+    # dtw_obj.plot_interesting()
+    #
+    # ## methods
+    # methods_obj = methods(PATH_result)
+    # # methods_obj.plot_param_mf()
+    # # methods_obj.plot_param_swmm()
+    # methods_obj.plot_heads_1loc()
+    # methods_obj.plot_theta_wc()
+    #
+    # ## sensitivity
+    # sensit_obj  = sensitivity(PATH_result)
+    # sensit_obj.ss_vs_trans()
+    # sensit_obj.leak_vs_run()
 
     # print plt.get_figlabels()
     plt.show()

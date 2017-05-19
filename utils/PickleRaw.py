@@ -18,11 +18,12 @@ Arguments:
 Options:
   --fmt    Run Formatting Script                                    [default: 0]
   --sub    Make Matrixes of a SWMM Variable
+  --soil   SWMM Soil                                                [default: 0]
   --help   Print this message
 
 Notes:
   Created: 2017-03-06
-  Update: 2017-05-03
+  Update: 2017-05-18
 """
 
 import BB
@@ -259,8 +260,8 @@ def main(path_result):
 if __name__ == '__main__':
     start       = time.time()
     arguments   = docopt(__doc__)
-    typecheck   = Schema({'PATH' : os.path.exists, '--fmt' : Use(int)},
-                          ignore_extra_keys=True)
+    typecheck   = Schema({'PATH' : os.path.exists, '--fmt' : Use(int),
+                          '--soil' : Use(int)}, ignore_extra_keys=True)
     PATH_result = op.abspath(typecheck.validate(arguments)['PATH'])
     args = typecheck.validate(arguments)
 
