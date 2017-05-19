@@ -262,18 +262,24 @@ if __name__ == '__main__':
     typecheck   = Schema({'PATH' : os.path.exists, '--fmt' : Use(int)},
                           ignore_extra_keys=True)
     PATH_result = op.abspath(typecheck.validate(arguments)['PATH'])
-    # remove undefined items from dictionary
-    args = {k:v for k, v in arguments.iteritems() if v}
-    # this may introduce a bug
-    args = typecheck.validate(args)
+    args = typecheck.validate(arguments)
 
     ### 1 CPU
     swmm_obj              = main(PATH_result)
     scenarios, path_picks = swmm_obj.scenarios, swmm_obj.path_picks
     ts_hr                 = swmm_obj.ts_hr
 
+    if args['--fmt']:
+        PickleFmt.main(PATH_result);
+
+    elif args['--soil']:
+        print 'Pickling SWMM Soil to {} ... '.format(path_picks)
+        pool = Pool(processes=len(scenarios))
+        res = pool.map(_sub_var, zip(scenarios, ['soil']*len(scenarios),
+                               [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
+
     ### Multiprocessing
-    if len(args) == 1:
+    else:
         print 'Pickling FHD heads to: {}'.format(path_picks)
         pool = Pool(processes=len(scenarios))
         res = pool.map(_ts_heads, zip(scenarios, [path_picks] * len(scenarios)))
@@ -288,13 +294,6 @@ if __name__ == '__main__':
         res = pool.map(_sub_var, zip(scenarios, ['run']*len(scenarios),
                                [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
 
+        PickleFmt.main(PATH_result);
         end = time.time()
         print 'Pickles made in ~ {} min'.format(round((end-start)/60., 2))
-
-    elif args['--fmt']:
-        PickleFmt.main(PATH_result);
-    else:
-        print 'Pickling SWMM Soil to {} ... '.format(path_picks)
-        pool = Pool(processes=len(scenarios))
-        res = pool.map(_sub_var, zip(scenarios, ['soil']*len(scenarios),
-                               [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))

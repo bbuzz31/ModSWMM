@@ -61,7 +61,7 @@ class InitSim(object):
     Run MF SS
     Create SWMM Input File
     """
-    def __init__(self, slr, days, ext='_1'):
+    def __init__(self, slr, days, ext=''):
         self.slr        = slr
         self.days       = days
         self.verbose    = 4
@@ -72,7 +72,7 @@ class InitSim(object):
         self.path_child = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled',
                                 time.strftime('%b')+ext, 'Child_{}'.format(slr))
         self.path_data  = op.join(self.path_child, 'Data')
-        self.path_res   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-17')
+        self.path_res   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-18')
         self.start      = time.time()
 
     def mf_params(self):
