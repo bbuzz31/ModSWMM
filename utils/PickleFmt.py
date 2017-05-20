@@ -88,27 +88,6 @@ class fmt_dtw(fmt_base):
     def __init__(self, path_result):
         fmt_base.__init__(self, path_result)
 
-    def make_df_dtw_season(self):
-        """
-        Convert heads to DTW for all times, all SLR, all locations
-        Return Df with seasons_slr as columns, 1 indexed row/col as index
-        """
-        df_yrs = []
-        for i, slr in enumerate(self.slr):
-            mat_dtw = self._make_mat_dtw(slr).reshape(-1, 3774)
-            df_dtw  = pd.DataFrame(mat_dtw, index=self.ts_hr,
-                                             columns=range(10001, 10001 + 3774))
-            # take one full year of dates, resample by season
-            df_yr   = (df_dtw.loc['2011-12-01-00':'2012-11-30-00',:].resample('Q-NOV')
-                                                                     .mean().T)
-
-            df_yr.columns = ['{}_{}'.format(season, slr) for season in self.seasons]
-            df_yrs.append(df_yr)
-        df_res = pd.concat([df_yr for df_yr in df_yrs], axis=1)
-        fname = 'dtw_seasons.df'
-        df_res.to_pickle(op.join(self.path_picks, fname))
-        print 'DataFrame pickled to: {}'.format(op.join(self.path_picks, fname))
-
     def make_df_dtw_area(self, dtw=0.1524):
         """
         Get area where head within a list of DTWs (in m) of surface using SWMM
@@ -153,8 +132,7 @@ class fmt_run(fmt_base):
         # sec/step to vol at each hr  / area / m to mm
         self.rate2dep = (60 * 60) / (200. * 200.) * 1000
 
-
-    def make_df_vol_area(self, vol=0.1):
+    def make_df_vol_area(self):
         """
         Get area where runoff greater than a list of volumes (in CM)
         Returns a Df, rows are hours, columns are slr_rate theshold.
@@ -187,29 +165,6 @@ class fmt_run(fmt_base):
         print 'DataFrame pickled to: {}'.format(op.join(self.path_picks, fname))
 
         return df_res
-
-    def make_df_run_season(self):
-        """
-        Average runoff of times, all SLR, all locations
-        Return Df with seasons_slr as columns, 1 indexed row/col as index
-        """
-        df_yrs = []
-        for i, slr in enumerate(self.slr):
-            f_name  = 'swmm_run_grid_{}.npy'.format(slr)
-            mat_run = (np.load(op.join(self.path_picks, f_name))
-                                        .reshape(-1, 3774) * self.rate2dep)
-            df_run  = pd.DataFrame(mat_run, index=self.ts_hr,
-                                             columns=range(10001, 10001 + 3774))
-            # take one full year of dates, resample by season
-            df_yr   = (df_run.loc['2011-12-01-00':'2012-11-30-00',:].resample('Q-NOV')
-                                                                     .mean().T)
-
-            df_yr.columns = ['{}_{}'.format(season, slr) for season in self.seasons]
-            df_yrs.append(df_yr)
-        df_res = pd.concat([df_yr for df_yr in df_yrs], axis=1)
-        fname = 'run_seasons.df'
-        df_res.to_pickle(op.join(self.path_picks, fname))
-        print 'DataFrame pickled to: {}'.format(op.join(self.path_picks, fname))
 
 def fmt_slr():
     """
@@ -256,5 +211,6 @@ def main(path_result):
     print ('Pickled Runoff Results')
 
 if __name__ == '__main__':
-    # PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-14')
+    # PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-18')
     main(PATH_result)
+    # fmt_run(PATH_result).make_df_vol_area()
