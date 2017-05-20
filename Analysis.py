@@ -12,6 +12,7 @@ from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
+from scipy import interpolate
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -44,6 +45,8 @@ class res_base(object):
         self.end        = '2012-11-30-00'
         # self.ts_hr    = self.ts_hr[3696:]
         self.ts_yr_day  = self.ts_day[154:-30]
+        self.nrows      = 74
+        self.ncols      = 51
 
     def ts_all(self, param, loc=False, slr=0.0, dates=[0, -0], plot=False):
         """
@@ -242,8 +245,8 @@ class summary(res_base):
         self.row, self.col  = row, col
         self.loc_1d         = bcpl.cell_num(self.row, self.col) + 10000
         self.arr_land_z     = np.load(op.join(self.path_data, 'Land_Z.npy'))
-    ##### May only need plot_ts_uzf_sums, and head frequencies
-    ##### 2d head chg could be useful for sensitivity and/or calibration
+        self.df_grid        = pd.read_csv(op.join(self.path_data, 'MF_grid.csv'))
+    # 2d head chg could be useful for sensitivity and/or calibration
 
     ### SWMM
     # make this a fill plot, except for precip
@@ -314,7 +317,6 @@ class summary(res_base):
         axe.append(fig.add_subplot(gs[:2, 1]))
         axe.append(fig.add_subplot(gs[2, :]))
 
-        # title  = fig.suptitle('Monthly Averages')
         for i, var in enumerate(var_map.values()):
             df_slr   = df_mon.filter(like=str(var))
             df_slr.plot(ax=axe[i], title=var, sharey=True)
@@ -322,9 +324,9 @@ class summary(res_base):
         df_mon.Precip.plot(ax=axe[-1], title='Precipitation')
 
         ### Y AXES
-        axe[0].set_ylabel('Volume for whole model, in cubic meters')
+        axe[0].set_ylabel('Volume for whole model, in cubic meters', labelpad=10)
         axe[0].set_ylim(10000, 200000)
-        axe[2].set_ylabel('Depth, in millimeters', labelpad=25)
+        axe[2].set_ylabel('Depth, in millimeters', labelpad=35)
 
         ### X AXES --- todo
         # axe[i].set_xticklabels(df_mon.index.map(lambda t: t.strftime('%b')))
@@ -348,6 +350,17 @@ class summary(res_base):
 
         df_uzf_run.resample('MS').mean().plot(subplots=False, title='UZF Runoff')
 
+    def plot_land_z(self):
+        """ plot land surface 2d - do this in arc (interp is cleaner) """
+        arr_grid_z        = self.arr_land_z.reshape(self.nrows, self.ncols)
+        arr_grid_active   = self.df_grid.IBND.values.reshape(self.nrows, self.ncols)
+        arr_grid_z_active = np.where(arr_grid_active > 0, arr_grid_z, 11)
+        fig, axes  = plt.subplots()
+        im         = axes.imshow(arr_grid_z_active, plt.cm.jet)
+        cbar_ax    = fig.add_axes([0.85, 0.175, 0.025, 0.6], xlabel='Elevation (m)')
+        fig.colorbar(im, cbar_ax, spacing='proportional')
+        axes.grid('off')
+
     def plot_hypsometry(self, bins=50):
         """ Histogram of Elevations of Model Cells """
         fig, axes       = plt.subplots()
@@ -356,50 +369,74 @@ class summary(res_base):
         n, bin_edges, _ = axes.hist(arr_cln, bins=bins, facecolor='darkblue',
                         alpha=0.825, rwidth=0.55, align='left', histtype='bar')
 
-        axes.set_xlabel('Elevation (m)')#, labelpad=20)
-        axes.set_ylabel('Counts', labelpad=20)
+        axes.set_xlabel('Elevation (m)', labelpad=20, size=13)
+        axes.set_ylabel('Frequency', labelpad=20, size=13)
         # format ticks
         axes.xaxis.set_ticks(np.linspace(0.0, 9.0, 10))
         axes.xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
         axes.set_xlim(-0.25, 8.25)
         fig.set_label('hypsometry')
         return fig
-    def plot_head_hist(self, bins=30):
+
+    def plot_head_hist(self, bins=25):
         """ Create a Histogram of Heads for each SLR Scenario """
         # dict_heads = self._load_swmm('heads')
-        dict_heads = self._load_fhd()
-        fig, axes  = plt.subplots(ncols=len(self.slr), sharey=True)
-        # title      = fig.suptitle('Histograms of Groundwater Head')
-        axe        = axes.ravel()
-        df_pdfs    = pd.DataFrame()
+        dict_heads  = self._load_fhd()
+        fig         = plt.figure()
+        axe         = []
+        gs          = gridspec.GridSpec(3, 3)
+        colors      = ['darkblue', 'darkgreen', 'darkred']
+        axe.append(fig.add_subplot(gs[:2, 0]))
+        axe.append(fig.add_subplot(gs[:2, 1], sharey=axe[0]))
+        axe.append(fig.add_subplot(gs[:2, 2], sharey=axe[0]))
+        axe.append(fig.add_subplot(gs[2, :]))
+
         for i, (slr, arr) in enumerate(dict_heads.items()):
             arr_cln   = np.where(arr < 0, np.nan, arr) # for fhd
             arr_cln   = arr_cln[~np.isnan(arr_cln)].flatten()[154:-30] # for both
             # for converting absolute counts to between 0 1
-            weights  = (np.ones_like(arr_cln)/len(arr_cln)) #* arr_cln / (arr_cln.max() - arr_cln.min())
+            weights   = (np.ones_like(arr_cln)/len(arr_cln))
 
             mean, std       = arr_cln.mean(), arr_cln.std()
             n, bin_edges, _ = axe[i].hist(arr_cln, bins=bins, #normed=True,
-                            align='mid', rwidth=0.55,  weights=weights,
-                            histtype='bar', facecolor='green', alpha=0.35)
-            # bin_middles = 0.5*(bin_edges[1:] + bin_edges[:-1])
-            # axe[i].plot(bin_middles, n, 'r-', linewidth=2)
-            colname          = 'SLR-{} (m)'.format(slr)
-            df_pdfs[colname] = mpl.mlab.normpdf(bin_edges, mean, std)
-            # l = axe[i].plot(bin_edges, df_pdfs[colname], color='maroon', linewidth=1)
-            axe[i].set_title('SLR: {} (m)'.format(slr))
-            axe[i].set_ylabel('Percent Area')
-            axe[1].set_xlabel('GW Head (m)')
-            # axe[i].xaxis.set_ticks(np.arange(0, 8, 0.5))
+                            align='left', rwidth=0.55,  #weights=weights,
+                            histtype='bar', facecolor=colors[i], alpha=0.825
+                            )
 
+            colname         = 'SLR-{} (m)'.format(slr)
+            center = (bin_edges[:-1] + bin_edges[1:]) / 2
+            # fit a line to the middles of the bins
+            fit  = interpolate.InterpolatedUnivariateSpline(bin_edges[:-1], n)
+            # fit  = interpolate.InterpolatedUnivariateSpline(center, n)
+            x2   = np.linspace(bin_edges[:-1].min(), bin_edges[:-1].max(), 1000)
+            # x2   = np.linspace(center.min(), center.max(), 1000)
+            y    = fit(x2)
+
+            # plot distributions on the bottom
+            axe[3].plot(x2, y, color=colors[i], label=colname)
+
+            axe[i].set_title('SLR: {} (m)'.format(slr))
+            axe[i].xaxis.set_ticks(np.linspace(0.0, 9.0, 10.0))
+            axe[i].xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
+            axe[i].set_xlim(-0.25, 7.7)
+            axe[0].set_ylabel('Frequency', labelpad=15)
+            # axe[1].set_xlabel('GW Head (m)', labelpad=15)
+
+        # turn off shared ticks
+        plt.setp(axe[1].get_yticklabels(), visible=False)
+        plt.setp(axe[2].get_yticklabels(), visible=False)
+
+        # bottom subplot properties
+        axe[3].legend()
+        axe[3].set_xlabel('GW Head (m)', labelpad=10)
+        axe[3].set_ylabel('Frequency', labelpad=15)
+        axe[3].xaxis.set_ticks(np.linspace(0.0, 9.0, 10))
+        axe[3].xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
+        axe[3].set_xlim(-0.05, 7.7)
+        gs.update(bottom=0.075, hspace=0.3, wspace=0.15)
         fig.set_label('hist_head')
-        # plot the distribution functions on one graph
-        fig2, axes2      = plt.subplots()
-        df_pdfs['bins']  =  bin_edges # differences due to slr in bins negligible
-        df_pdfs.set_index('bins', inplace=True)
-        df_pdfs.plot(ax=axes2)
-        axes2.set_ylabel('Probability')
-        axes2.set_xlabel('GW Head (m)')
+
+
 
     ### make figs for thesis in in ArcMap
     def plot_2d_head_chg(self):
@@ -792,7 +829,7 @@ class sensitivity(res_base):
 def rc_params():
     mpl.rcParams['figure.figsize']   = (16, 9)
     mpl.rcParams['figure.titlesize'] = 14
-    mpl.rcParams['axes.titlesize']   = 11
+    mpl.rcParams['axes.titlesize']   = 12
     mpl.rcParams['axes.labelsize']   = 11
     mpl.rcParams['savefig.dpi']      = 1000
     mpl.rcParams['savefig.format']   = 'eps'
@@ -812,8 +849,9 @@ def make_plots():
     # summary_obj.plot_ts_sys_var()
     # summary_obj.plot_slr_sys_sums()
     # summary_obj.plot_ts_uzf_sums()
-    summary_obj.plot_hypsometry()
-    # summary_obj.plot_head_hist()
+    # summary_obj.plot_land_z()
+    # summary_obj.plot_hypsometry()
+    summary_obj.plot_head_hist()
     # summary_obj.plot_2d_head_chg()
     # summary_obj.plot_head_contours()
     # summary_obj.save_cur_fig()

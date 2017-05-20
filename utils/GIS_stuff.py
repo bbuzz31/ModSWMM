@@ -54,7 +54,7 @@ class XY(object):
             # store SS and avg transient in data frame
             df_heads[col]         = arr_cln[0, :]
             df_heads[col[:-3]]    = arr_cln.mean(0)
-            
+
         # add change columns
         df_heads['Chg_1_0']  = df_heads['SLR_1'] - df_heads['SLR_0']
         df_heads['Chg_2_1']  = df_heads['SLR_2'] - df_heads['SLR_1']
@@ -64,6 +64,8 @@ class XY(object):
         df_heads['Chg_2_1_SS']  = df_heads['SLR_2-SS'] - df_heads['SLR_1-SS']
         df_heads['Chg_2_0_SS']  = df_heads['SLR_2-SS'] - df_heads['SLR_0-SS']
 
+
+
         # join to grid
         df_xy_heads = self.df_xy.join(df_heads).drop(['OBJECTID', 'ORIG_FID'], 1)
         df_xy_heads.dropna(inplace=True)
@@ -71,20 +73,32 @@ class XY(object):
         df_xy_heads.to_excel(op.join(self.path_data, 'XY_heads.xlsx'))
         return df_xy_heads
 
-    def df_to_shppt(self):
+    def df_to_shppt(self, df):
         """ Convert pandas (heads) df to a point shapefile. Needs an X and Y """
         path_gis = op.join(op.expanduser('~'), 'Dropbox', 'win_gis')
-        df = self.grid_heads()
+        # df = self.grid_heads()
         df['geom'] = df.apply(lambda x: Point((float(x.POINT_X), float(x.POINT_Y))), axis=1)
         geo_df = geopandas.GeoDataFrame(df, geometry='geom')
         # attach spatial reference perhaps - untested
         # proj WGS84
         # df.crs= "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
-        geo_df.to_file(op.join(path_gis, 'Year_Heads.shp'), driver='ESRI Shapefile')
+        geo_df.to_file(op.join(path_gis, 'MF_Grid.shp'), driver='ESRI Shapefile')
 
+    def grid_top_active(self):
+        keep_cols   = ['OBJECTID', 'ROW', 'COLUMN', 'IBND', 'UZF_IBND',
+                       'MODEL_TOP', 'KXL1', 'KZL1']
+        df_ks       = pd.read_csv(op.join(self.path_data, 'MF_GRID.csv'),
+                                usecols= keep_cols, index_col='OBJECTID')
 
+        active_top  = np.where(df_ks.IBND.values > 0, df_ks.MODEL_TOP, np.nan)
+        df_ks['ActiveTop'] = active_top
+        df_xy_clean = self.df_xy[['POINT_X', 'POINT_Y']]
 
+        df_join     =  df_ks.join(df_xy_clean)
+
+        self.df_to_shppt(df_join)
 
 
 PATH   = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled')
-xy_obj = XY(PATH).df_to_shppt()
+XY(PATH).grid_top_active()
+# xy_obj = XY(PATH).df_to_shppt()
