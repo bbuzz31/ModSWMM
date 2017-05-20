@@ -857,7 +857,7 @@ def rc_params():
     mpl.rcParams['axes.labelsize']   = 11
     mpl.rcParams['savefig.dpi']      = 2000
     mpl.rcParams['savefig.format']   = 'pdf'
-    mpl.rcParams['figure.figsize']   = (18, 12) # for saving
+    # mpl.rcParams['figure.figsize']   = (18, 12) # for saving
     # matplotlib.rcParams['axes.labelweight'] = 'bold'
     for param in mpl.rcParams.keys():
         # print param
