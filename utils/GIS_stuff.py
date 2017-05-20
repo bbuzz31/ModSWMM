@@ -31,7 +31,7 @@ class XY(object):
         keep_cols   = ['OBJECTID', 'ROW', 'COLUMN', 'IBND', 'UZF_IBND',
                        'MODEL_TOP', 'KXL1', 'KZL1']
         df_ks       = pd.read_csv(op.join(self.path_data, 'MF_GRID.csv'),
-                                usecols= keep_cols, index_col='OBJECTID')
+                                usecols=keep_cols, index_col='OBJECTID')
 
         df_xy_clean = self.df_xy[['POINT_X', 'POINT_Y']]
 

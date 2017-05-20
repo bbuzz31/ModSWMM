@@ -90,7 +90,7 @@ def mf_get_all(path_root, mf_step, **params):
         uzf = bf.CellBudgetFile(mf_model + '.uzfcb2.bin', precision='double')
 
     head_fhd      = hds.get_data(totim=mf_step+1, mflay=0)
-    uzf_data      = uzf.get_data(text='SURFACE LEAKAGE', totim=mf_step+1)[0]
+    uzf_data      = abs(uzf.get_data(text='SURFACE LEAKAGE', totim=mf_step+1)[0])
 
     arr_surf      = np.load(os.path.join(path_root, 'Data', 'Land_Z.npy')).reshape(head_fhd.shape)
     # intialize numpy arrays that will get updated based on row/col location
@@ -130,8 +130,8 @@ def mf_get_all(path_root, mf_step, **params):
                     # first depth, for checking coupling -- or maybe use
                     for x in range(line_start, line_start+1):
                         # average:
-                        #for x in range(line_start, line_start+40):
-                        theta += float(linecache.getline(each, x).split()[-1])#/40
+                        for x in range(line_start, line_start+40):
+                            theta += float(linecache.getline(each, x).split()[-1])/40
                         theta_uzfb[row][col] = theta
                     looking = False
 

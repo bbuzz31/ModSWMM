@@ -8,7 +8,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import flopy.utils.formattedfile as ff
 
-from components import bcpl, swmmtoolbox as swmtbx
+from components import bcpl
+from utils import swmmtoolbox as swmtbx
 
 class ss_base(object):
     def __init__(self, path_result):
@@ -368,12 +369,12 @@ class runoff(ss_base):
         df_run.plot(ax=axes[0])
         df_head.plot(ax=axes[1])
 
-plt.style.use('seaborn')
+# plt.style.use('seaborn')
 
-PATH_ss  = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled', 'May_SS', 'MF')
-PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-08')
+# PATH_ss  = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled', 'May_SS', 'MF')
+# PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-08')
 # surf_leak(PATH_ss).ss_dtw()
 # surf_leak(PATH_res).plot_2d_leaks_perm()
 # surf_leak(PATH_res).plot_ts_leak_1(0,2)
 # runoff(PATH_res, 18, 28).ts_loc()
-plt.show()
+# plt.show()

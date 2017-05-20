@@ -17,6 +17,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import FormatStrFormatter
+import colorcet as cc
 
 from components import bcpl
 from utils import swmmtoolbox as swmtbx
@@ -28,7 +29,10 @@ class res_base(object):
         self.path_data  = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC',
                                                            'Coupled', 'Data')
         self.path_fig   = op.join(self.path, 'Figures')
+        self.path_gis   = op.join(op.expanduser('~'), 'Dropbox', 'win_gis')
         self.df_sys     = pd.read_pickle(op.join(self.path_picks, 'swmm_sys.df'))#.loc['2012-01-01-00':, :]
+        self.df_xy      = pd.read_csv(op.join(self.path_data, 'Grid_XY.csv'),
+                                                      index_col='Zone')
         self.slr_names  = self._get_slr()
         self.slr        = sorted(self.slr_names)
         self.sys_vars   = BB.uniq([slr.rsplit('_', 1)[0] for slr in self.df_sys.columns])
@@ -43,7 +47,7 @@ class res_base(object):
         # to truncate time series to start at Dec 1, 2012; implement in pickling
         self.st         = '2011-12-01-00'
         self.end        = '2012-11-30-00'
-        # self.ts_hr    = self.ts_hr[3696:]
+        self.ts_yr_hr   = self.ts_hr[3696:-698]
         self.ts_yr_day  = self.ts_day[154:-30]
         self.nrows      = 74
         self.ncols      = 51
@@ -174,7 +178,7 @@ class res_base(object):
             dict_fhd[slr] = (np.load(pickle_file))
         return dict_fhd
 
-    def _load_uzf(self, kind=False):
+    def _load_uzf(self, kind=False, scen=False):
         """ Load Pickled UZF Arrays """
         # ordered dict helps with plotting
         dict_uzf = OrderedDict()
@@ -188,7 +192,10 @@ class res_base(object):
             # list of dictionary of scenario (0.0) : 74x51x549 matrix
             dict_uzf[var] = tmp_dict
         try:
-            return dict_uzf[kind]
+            if scen:
+                return dict_uzf[kind][scen]
+            else:
+                return dict_uzf[kind]
         except:
             return dict_uzf
 
@@ -341,17 +348,26 @@ class summary(res_base):
 
         return fig
 
-    def uzf_runoff(self):
+    def plot_uzf_runoff_leak(self):
         """ Not sure exactly what this means """
-        arr_uzf_run = self._load_uzf()['uzf_run']
-        df_uzf_run  = pd.DataFrame(index=self.ts_day)
-        for key, val in arr_uzf_run.items():
-             df_uzf_run['SLR: {}'.format(key)] = val.sum(2).sum(1)
+        dict_uzf_run  = self._load_uzf('uzf_run')
+        dict_uzf_leak = self._load_uzf('surf_leak')
+        df_uzf        = pd.DataFrame(index=self.ts_day)
+        for slr, arr in dict_uzf_run.items():
+             df_uzf['Run_SLR: {}'.format(slr)]  = arr.sum(2).sum(1)
+             df_uzf['Leak_SLR: {}'.format(slr)] = dict_uzf_leak[slr].sum(2).sum(1)
 
-        df_uzf_run.resample('MS').mean().plot(subplots=False, title='UZF Runoff')
+        df_mon    = df_uzf.resample('MS').mean().loc[self.st:self.end, :]
+        fig, axes = plt.subplots(ncols=2)
+        axe       = axes.ravel()
+        df_mon.filter(like='Run').plot(ax=axe[0], title='UZF Runoff')
+        df_mon.filter(like='Leak').plot(ax=axe[1], title='UZF Leak')
+        return df_mon
 
     def plot_land_z(self):
-        """ plot land surface 2d - do this in arc (interp is cleaner) """
+        """ plot land surface 2d - do this in arc (interp is cleaner)
+        should interpolate it and then mask it (basically what i did in arc!
+        """
         arr_grid_z        = self.arr_land_z.reshape(self.nrows, self.ncols)
         arr_grid_active   = self.df_grid.IBND.values.reshape(self.nrows, self.ncols)
         arr_grid_z_active = np.where(arr_grid_active > 0, arr_grid_z, 11)
@@ -386,6 +402,7 @@ class summary(res_base):
         axe         = []
         gs          = gridspec.GridSpec(3, 3)
         colors      = ['darkblue', 'darkgreen', 'darkred']
+        # colors      = ['#4C72B0', '#55A868', '#C44E52'] # seaborn defaults
         axe.append(fig.add_subplot(gs[:2, 0]))
         axe.append(fig.add_subplot(gs[:2, 1], sharey=axe[0]))
         axe.append(fig.add_subplot(gs[:2, 2], sharey=axe[0]))
@@ -435,8 +452,6 @@ class summary(res_base):
         axe[3].set_xlim(-0.05, 7.7)
         gs.update(bottom=0.075, hspace=0.3, wspace=0.15)
         fig.set_label('hist_head')
-
-
 
     ### make figs for thesis in in ArcMap
     def plot_2d_head_chg(self):
@@ -516,10 +531,10 @@ class runoff(res_base):
         """ Time Series of Runoff Sums """
         df_run    = self.df_sys.filter(like='Runoff')
         fig, axes = plt.subplots(ncols=2)
-        title     = fig.suptitle('Runoff vs Time - xlabels are off')
+        title     = fig.suptitle('Runoff vs Time')
         axe       = axes.ravel()
         # get rid of first day
-        df_run = df_run.loc['2012-07-01':, :]
+        df_run = df_run.loc[self.st:self.end, :]
 
         df_run.plot(ax=axe[0], title='Hourly', grid=True)
         df_run.resample('MS').mean().plot(ax=axe[1], title='Monthly Mean', grid=True)
@@ -527,7 +542,16 @@ class runoff(res_base):
         axe[0].set_ylabel('Volume (cms)')
         axe[1].set_ylabel('Volume (cms)')
         fig.set_label(title.get_text())
-        return fig
+        return df_run
+
+    ### reflects flow paths
+    def plot_2d_total(self):
+        fig, axes = plt.subplots(ncols=len(self.slr))
+        axe       = axes.ravel()
+        for i, slr in enumerate(self.slr):
+            arr_tot = np.nansum(self.dict[str(slr)], 0)
+            im      = axe[i].imshow(arr_tot, plt.cm.jet)
+
     # greater change 1 -0 than 2-1; looks like distribution of conductivities, add plot
     def plot_2d_chg_slr(self):
         """ Plot Grid Change in total Runoff due to SLR """
@@ -831,15 +855,16 @@ def rc_params():
     mpl.rcParams['figure.titlesize'] = 14
     mpl.rcParams['axes.titlesize']   = 12
     mpl.rcParams['axes.labelsize']   = 11
-    mpl.rcParams['savefig.dpi']      = 1000
-    mpl.rcParams['savefig.format']   = 'eps'
-    # mpl.rcParams['figure.figsize']   = (18, 12) # for saving
+    mpl.rcParams['savefig.dpi']      = 2000
+    mpl.rcParams['savefig.format']   = 'pdf'
+    mpl.rcParams['figure.figsize']   = (18, 12) # for saving
     # matplotlib.rcParams['axes.labelweight'] = 'bold'
     for param in mpl.rcParams.keys():
         # print param
         pass
 
 def make_plots():
+    plt.style.use('seaborn')
     PATH_stor   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results')
     PATH_result = ('{}_05-18').format(PATH_stor)
     rc_params()
@@ -851,16 +876,16 @@ def make_plots():
     # summary_obj.plot_ts_uzf_sums()
     # summary_obj.plot_land_z()
     # summary_obj.plot_hypsometry()
-    summary_obj.plot_head_hist()
+    # summary_obj.plot_head_hist()
     # summary_obj.plot_2d_head_chg()
     # summary_obj.plot_head_contours()
     # summary_obj.save_cur_fig()
 
     # runoff
-    # runoff_obj = runoff(PATH_result)
+    runoff_obj = runoff(PATH_result)
     # runoff_obj.plot_area_vol()
     # runoff_obj.plot_ts_sums()
-    # runoff_obj.plot_2d_chg_slr()
+    runoff_obj.plot_2d_chg_slr()
     #
     # ## dtw
     # dtw_obj    = dtw(PATH_result)
@@ -884,5 +909,4 @@ def make_plots():
 
 
 # plt.style.use('seaborn-whitegrid')
-plt.style.use('seaborn')
-make_plots()
+# make_plots()

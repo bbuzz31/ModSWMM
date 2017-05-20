@@ -211,6 +211,6 @@ def main(path_result):
     print ('Pickled Runoff Results')
 
 if __name__ == '__main__':
-    # PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-18')
-    main(PATH_result)
-    # fmt_run(PATH_result).make_df_vol_area()
+    PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-18')
+    # main(PATH_result)
+    fmt_run(PATH_result).make_df_vol_area()
