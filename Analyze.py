@@ -31,7 +31,7 @@ def run_runoff():
     # runobj.save_cur_fig()
 
 PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-18')
-# run_summary()
+run_summary()
 # run_dtw()
-run_runoff()
+# run_runoff()
 plt.show()

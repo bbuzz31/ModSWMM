@@ -32,24 +32,26 @@ class res_base(object):
         self.df_sys     = pd.read_pickle(op.join(self.path_picks, 'swmm_sys.df'))#.loc['2012-01-01-00':, :]
         self.df_xy      = pd.read_csv(op.join(self.path_data, 'Grid_XY.csv'),
                                                       index_col='Zone')
-        self.slr_names  = self._get_slr()
-        self.slr        = sorted(self.slr_names)
+        self.df_swmm    = pd.read_csv(op.join(self.path_data, 'SWMM_subs.csv'),
+                                                           index_col='Zone')
+
         self.sys_vars   = BB.uniq([slr.rsplit('_', 1)[0] for slr in self.df_sys.columns])
 
         self.ts_day     = self.df_sys.resample('D').first().index
         self.ts_hr      = self.df_sys.index
-        self.df_swmm    = pd.read_csv(op.join(self.path_data, 'SWMM_subs.csv'),
-                                                           index_col='Zone')
         self.subs       = self.df_swmm.index.values
         self.slr_sh     = ['0.0', '1.0', '2.0']
-        self.seasons    = ['Winter', 'Spring', 'Summer', 'Fall']
+
         # to truncate time series to start at Dec 1, 2012; implement in pickling
+        self.slr_names  = self._get_slr()
+        self.slr        = sorted(self.slr_names)
         self.st         = '2011-12-01-00'
         self.end        = '2012-11-30-00'
         self.ts_yr_hr   = self.ts_hr[3696:-698]
         self.ts_yr_day  = self.ts_day[154:-30]
         self.nrows      = 74
         self.ncols      = 51
+        self.colors     = ['darkblue', 'darkgreen', 'darkred']
 
     def ts_all(self, param, loc=False, slr=0.0, dates=[0, -0], plot=False):
         """
@@ -190,12 +192,13 @@ class res_base(object):
                 tmp_dict[SLR] = np.load(leak_mat)
             # list of dictionary of scenario (0.0) : 74x51x549 matrix
             dict_uzf[var] = tmp_dict
-        try:
+
+        if kind:
             if scen:
                 return dict_uzf[kind][scen]
             else:
                 return dict_uzf[kind]
-        except:
+        else:
             return dict_uzf
 
     def _get_slr(self):
@@ -258,66 +261,63 @@ class summary(res_base):
         Plot Sum of Recharge, ET,  at all locs, each step, monthly mean
         PLot Precipation
         """
-        var_map  = OrderedDict([('uzf_rch','GW  Recharge'), ('uzf_et', 'GW  ET')])
-        dict_uzf = self._load_uzf()
-
         df_sums  = pd.DataFrame({'Precip':self.df_sys['Precip_{}'.format(
                                         self.slr[0])]}).resample('D').sum()
+        var_map  = OrderedDict([('uzf_rch','GW  Recharge'), ('uzf_et', 'GW  ET')])
+        dict_uzf = self._load_uzf()
         for name, arr in dict_uzf.items():
             if not name in var_map:
                 continue
             for slr in self.slr:
-                mat_sum = arr[slr].reshape(550,-1).sum(1)
-                df_sums['{}_{}'.format(var_map[name], slr)] = mat_sum
+                arr_sum = arr[slr].reshape(len(self.ts_day),-1).sum(1)
+                df_sums['{}_{}'.format(var_map[name], slr)] = arr_sum
 
         # truncate init conditions and resample to monthly
-        df_mon = abs(df_sums).loc[self.st:self.end, :].resample('MS').mean()
-
-        fig    = plt.figure()
-        axe    = []
-        gs     = gridspec.GridSpec(3, 2)
+        df_mon   = abs(df_sums).loc[self.st:self.end, :].resample('MS').mean()
+        ### PLOT
+        fig      = plt.figure()
+        axe      = []
+        gs       = gridspec.GridSpec(3, 2)
         axe.append(fig.add_subplot(gs[:2, 0]))
-        axe.append(fig.add_subplot(gs[:2, 1]))
+        axe.append(fig.add_subplot(gs[:2, 1], sharey=axe[0]))
         axe.append(fig.add_subplot(gs[2, :]))
 
         for i, var in enumerate(var_map.values()):
             df_slr   = df_mon.filter(like=str(var))
-            df_slr.plot(ax=axe[i], title=var, sharey=True)
+            for j, slr in enumerate(df_slr.columns):
+                axe[i].plot_date(df_slr.index, df_slr[slr], '-',
+                                        color=self.colors[j],
+                                        label='SLR: {} m'.format(self.slr[j]),
+                                        alpha=0.825)
 
-        df_mon.Precip.plot(ax=axe[-1], title='Precipitation')
+        axe[-1].plot(df_slr.index, df_mon.Precip, color='k', alpha=0.825)
 
-        ### Y AXES
-        axe[0].set_ylabel('Volume for whole model, in cubic meters', labelpad=10)
+        ### All axes
+        titles = ['GW  Recharge', 'GW  ET', 'Precipitation']
+        for i, ax in enumerate(axe):
+            ax.xaxis.set_major_locator(mpl.dates.MonthLocator())
+            ax.xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
+            # do this instead of using autofmt (Gridspec)
+            for label in ax.get_xticklabels():
+                 label.set_ha('center')
+                 label.set_rotation(20.)
+            ax.legend(loc='upper left', frameon=True, shadow=True, facecolor='w')
+            ax.set_xlim((df_slr.index[0], df_slr.index[-1]))
+            ax.set(title=titles[i])
+            ax.yaxis.grid(True)
+
+        axe[0].set_ylabel('Volume for whole model, in cubic meters', labelpad=15)
         axe[0].set_ylim(10000, 200000)
-        axe[2].set_ylabel('Depth, in millimeters', labelpad=35)
+        axe[2].set_ylabel('Depth, in millimeters', labelpad=40)
+        plt.setp(axe[1].get_yticklabels(), visible=False)
 
-        ### X AXES --- todo
-        # axe[i].set_xticklabels(df_mon.index.map(lambda t: t.strftime('%b')))
-        # fig.autofmt_xdate()
-
-        ### ADJUST
-        # fig.subplots_adjust(left=None, right=0.95, wspace=0.15)
         gs.update(bottom=0.075, hspace=0.6, wspace=0.15)
-        # axe[2].set_labelpad(5)
 
         fig.set_label('ts_summary')
 
         return fig
 
-    def plot_land_z(self):
-        """
-        plot land surface 2d - do this in arc (interp is cleaner)
-        should interpolate it and then mask it (basically what i did in arc!
-        """
-        arr_grid_z        = self.arr_land_z.reshape(self.nrows, self.ncols)
-        arr_grid_active   = self.df_grid.IBND.values.reshape(self.nrows, self.ncols)
-        arr_grid_z_active = np.where(arr_grid_active > 0, arr_grid_z, 11)
-        fig, axes  = plt.subplots()
-        im         = axes.imshow(arr_grid_z_active, plt.cm.jet)
-        cbar_ax    = fig.add_axes([0.85, 0.175, 0.025, 0.6], xlabel='Elevation (m)')
-        fig.colorbar(im, cbar_ax, spacing='proportional')
-        axes.grid('off')
-        axes.set(title='Land Surface Elevation')
+
 
     def plot_hypsometry(self, bins=50):
         """ Histogram of Elevations of Model Cells """
@@ -395,6 +395,20 @@ class summary(res_base):
         gs.update(bottom=0.075, hspace=0.3, wspace=0.15)
         fig.set_label('hist_head')
 
+    def plot_land_z(self):
+        """
+        plot land surface 2d - do this in arc (interp is cleaner)
+        should interpolate it and then mask it (basically what i did in arc!
+        """
+        arr_grid_z        = self.arr_land_z.reshape(self.nrows, self.ncols)
+        arr_grid_active   = self.df_grid.IBND.values.reshape(self.nrows, self.ncols)
+        arr_grid_z_active = np.where(arr_grid_active > 0, arr_grid_z, 11)
+        fig, axes         = plt.subplots()
+        im                = axes.imshow(arr_grid_z_active, plt.cm.jet)
+        cbar_ax           = fig.add_axes([0.85, 0.175, 0.025, 0.6], xlabel='Elevation (m)')
+        fig.colorbar(im, cbar_ax, spacing='proportional')
+        return fig
+
 class runoff(res_base):
     def __init__(self, path_result):
         res_base.__init__(self, path_result)
@@ -415,7 +429,6 @@ class runoff(res_base):
         axes.set_xlabel('Time', labelpad=15, size=14)
         axes.set_ylabel('Runoff Rate (CMS)', labelpad=15, size=14)
         axes.yaxis.grid(True)
-        axes.xaxis.grid(False)
 
         fig.autofmt_xdate(bottom=0.2, rotation=20, ha='center')
         fig.set_label('total_monthly_runoff')
@@ -455,7 +468,6 @@ class runoff(res_base):
 
             axe[i].set_xlabel('% Area', labelpad=15, size=14)
             axe[i].set_ylabel('Hours',  labelpad=15, size=14)
-            axe[i].xaxis.grid(False)
             axe[i].yaxis.grid(True)
         fig.subplots_adjust(left=0.075, right=0.92, wspace=0.15, hspace=0.15)
         fig.set_label('runoff_area')
@@ -499,10 +511,9 @@ class dtw(res_base):
             BB.fill_plot(df_hrs, axe[i], title='DTW <= {} m'.format(dtw))
             axe[i].set_xlabel('% Area', size=15, labelpad=15)
             axe[i].set_ylabel('Hours', size=15, labelpad=15)
-            axe[i].xaxis.grid(False)
             axe[i].legend(loc='lower left', frameon=True, shadow=True, facecolor='white')
             axe[i].set_ylim((0, len(df_area_one)*1.10))
-            # axe[i].legend.get_frame(facecolor='white')
+            axe[i].yaxis.grid(True)
         fig.set_label('dtw_area')
         return fig
 
@@ -628,9 +639,12 @@ def set_rc_params():
     plt.style.use('seaborn')
 
     mpl.rcParams['figure.figsize']   = (16, 9)
-    mpl.rcParams['figure.titlesize'] = 14
-    mpl.rcParams['axes.titlesize']   = 12
-    mpl.rcParams['axes.labelsize']   = 11
+    mpl.rcParams['figure.titlesize'] = 18
+    mpl.rcParams['axes.grid']        = False
+    mpl.rcParams['axes.titlesize']   = 15
+    mpl.rcParams['axes.labelsize']   = 15
+    mpl.rcParams['axes.labelpad']    = 15
+
     mpl.rcParams['savefig.dpi']      = 2000
     mpl.rcParams['savefig.format']   = 'pdf'
     # mpl.rcParams['figure.figsize']   = (18, 12) # for saving

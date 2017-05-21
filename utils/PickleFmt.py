@@ -88,7 +88,7 @@ class fmt_dtw(fmt_base):
     def __init__(self, path_result):
         fmt_base.__init__(self, path_result)
 
-    def make_df_dtw_area(self, dtw=0.1524):
+    def make_df_area(self, dtw=0.1524):
         """
         Get area where head within a list of DTWs (in m) of surface using SWMM
         Returns a Df, rows are day, columns are slr_dtw theshold.
@@ -117,7 +117,7 @@ class fmt_dtw(fmt_base):
         df_res.to_pickle(op.join(self.path_picks, fname))
         print 'DataFrame pickled to: {}'.format(op.join(self.path_picks, fname))
 
-    def make_df_dtw_year(self):
+    def make_df_year(self):
         """
         Make annual average DTW
         Convert heads to DTW for all times, all SLR, all locations
@@ -130,14 +130,12 @@ class fmt_dtw(fmt_base):
                                              columns=range(10001, 10001 + 3774))
             # take one full year of dates, resample by season
             df_yr   = df_dtw.loc['2011-12-01-00':'2012-11-30-00',:].mean(0).T
-            print df_yr.head()
             df_yr.name = float(slr)
             df_yrs.append(df_yr)
         df_res = pd.concat([df_yr for df_yr in df_yrs], axis=1)
         fname = 'dtw_yr.df'
         df_res.to_pickle(op.join(self.path_picks, fname))
         print 'DataFrame pickled to: {}'.format(op.join(self.path_picks, fname))
-
 
     def _make_mat_dtw(self, slr):
         """ Make Matrix of Elevations - Heads (DTW) (ts x 74 x 51) """
@@ -154,7 +152,7 @@ class fmt_run(fmt_base):
         # sec/step to vol at each hr  / area / m to mm
         self.rate2dep = (60 * 60) / (200. * 200.) * 1000
 
-    def make_df_vol_area(self):
+    def make_df_area(self):
         """
         Get area where runoff greater than a list of volumes (in CM)
         Returns a Df, rows are hours, columns are slr_rate theshold.
@@ -223,15 +221,14 @@ def fmt_slr():
 
 def main(path_result):
     dtw = fmt_dtw(path_result)
-    dtw.make_df_dtw_season()
-    dtw.make_df_dtw_area(dtw=0.1524)
+    dtw.make_df_year()
+    dtw.make_df_area(dtw=0.1524)
     print ('Pickled DTW Results')
 
     run = fmt_run(path_result)
-    run.make_df_vol_area(vol=0.01)
-    run.make_df_run_season()
+    run.make_df_area()
     print ('Pickled Runoff Results')
 
 if __name__ == '__main__':
-    # PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-18')
+    PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-21_1')
     main(PATH_result)
