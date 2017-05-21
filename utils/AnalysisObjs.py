@@ -338,7 +338,7 @@ class summary(res_base):
         arr_active      = np.where(self.arr_land_z <= 0, np.nan, self.arr_land_z)
         arr_cln         = arr_active[~np.isnan(arr_active)]
         n, bin_edges, _ = axes.hist(arr_cln, bins=bins, facecolor='darkblue',
-                        alpha=0.825, rwidth=0.55, align='left', histtype='bar')
+                        alpha=0.725, align='left', histtype='bar')
 
         axes.set_xlabel('Elevation (m)')
         axes.set_ylabel('Frequency')
@@ -356,7 +356,6 @@ class summary(res_base):
         fig         = plt.figure()
         axe         = []
         gs          = gridspec.GridSpec(3, 3)
-        colors      = ['darkblue', 'darkgreen', 'darkred']
         # colors      = ['#4C72B0', '#55A868', '#C44E52'] # seaborn defaults
         axe.append(fig.add_subplot(gs[:2, 0]))
         axe.append(fig.add_subplot(gs[:2, 1], sharey=axe[0]))
@@ -371,8 +370,8 @@ class summary(res_base):
             mean, std       = arr_cln.mean(), arr_cln.std()
             colname = 'SLR: {} m'.format(slr)
             n, bin_edges, _ = axe[i].hist(arr_cln, bins=bins, #normed=True,
-                            align='left', rwidth=0.55,  #weights=weights,
-                            histtype='bar', facecolor=colors[i], alpha=0.825,
+                            align='left', #rwidth=0.55,  #weights=weights,
+                            histtype='bar', facecolor=self.colors[i], alpha=0.725,
                             label=colname)
 
 
@@ -385,7 +384,7 @@ class summary(res_base):
             y       = fit(x2)
 
             # plot distributions on the bottom
-            axe[3].plot(x2, y, color=colors[i], label=colname)
+            axe[3].plot(x2, y, color=self.colors[i], label=colname)
 
             # axe[i].set_title('SLR: {} m'.format(slr))
             axe[i].legend(loc='upper right', frameon=True, shadow=True, facecolor='w')
@@ -537,8 +536,6 @@ class dtw(res_base):
         fig         = plt.figure()
         axe         = []
         gs          = gridspec.GridSpec(3, 3)
-        colors      = ['darkblue', 'darkgreen', 'darkred']
-        # colors      = ['#4C72B0', '#55A868', '#C44E52'] # seaborn defaults
         axe.append(fig.add_subplot(gs[:2, 0]))
         axe.append(fig.add_subplot(gs[:2, 1], sharey=axe[0]))
         axe.append(fig.add_subplot(gs[:2, 2], sharey=axe[0]))
@@ -548,7 +545,7 @@ class dtw(res_base):
             mask_yr = np.ma.masked_invalid(self.df_year[slr].values).compressed()
             n, bin_edges, _ = axe[i].hist(mask_yr, bins=bins,
                             align='left', rwidth=0.55, histtype='bar',
-                            facecolor=colors[i], alpha=0.825)
+                            facecolor=self.colors[i], alpha=0.825)
 
             colname = 'SLR-{} (m)'.format(slr)
             centers = (bin_edges[:-1] + bin_edges[1:]) / 2      # for unsmoothed
@@ -558,7 +555,7 @@ class dtw(res_base):
             y       = fit(x2)
 
             # plot smoothed curve on the bottom
-            axe[3].plot(x2, y, color=colors[i], label=colname)
+            axe[3].plot(x2, y, color=self.colors[i], label=colname)
             # axe[3].plot(centers, n, color=colors[i], label=colname) # unsmoothed
 
             axe[i].set_title('SLR: {} m'.format(slr))
@@ -665,7 +662,7 @@ def set_rc_params():
 
     # mpl.rcParams['savefig.dpi']      = 2000
     mpl.rcParams['savefig.format']   = 'pdf'
-    mpl.rcParams['figure.figsize']   = (18, 12) # for saving
+    # mpl.rcParams['figure.figsize']   = (18, 12) # for saving
     # matplotlib.rcParams['axes.labelweight'] = 'bold'
     for param in mpl.rcParams.keys():
         # print param
