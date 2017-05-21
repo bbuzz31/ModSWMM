@@ -39,7 +39,7 @@ class runoff(res_base):
         fig.autofmt_xdate(bottom=0.2, rotation=20, ha='center')
         fig.set_label('total_monthly_runoff')
 
-    def shp_2d_chg(self):
+    def shp_chg(self):
         """ Write shapefile of 2d change due to SLR """
         low         = self.dict['0.0'][3696:-698, :, :].sum(0).reshape(-1)
         med         = self.dict['1.0'][3696:-698, :, :].sum(0).reshape(-1)
@@ -98,8 +98,9 @@ plt.style.use('seaborn')
 PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-18')
 rc_params()
 runobj = runoff(PATH_res)
-# runobj.shp_2d_chg()
-runobj.plot_area_vol()
-runobj.save_cur_fig()
+# runobj.plot_ts_total()
+runobj.shp_chg()
+# runobj.plot_area_vol()
+# runobj.save_cur_fig()
 
 plt.show()

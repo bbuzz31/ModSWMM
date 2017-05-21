@@ -67,7 +67,7 @@ class dtw(res_base):
 
         return df_inter
 
-    def tmp(self, maxchg=-10, maxdtw=30.48):
+    def plot_interesting(self, maxchg=-10, maxdtw=30.48):
         df_inter         = self.interesting()
         for i in range(len(self.slr_sh) - 1):
             slr_low      = float(self.slr_sh[i])
@@ -101,14 +101,23 @@ class dtw(res_base):
         return
 
     def shp_interesting(self):
-        pass
+        """ Write shapefile of interesting change locations due to SLR """
+        df_interest = self.interesting()
+        df_xy       = self.df_xy.loc[:, ['POINT_X', 'POINT_Y']]
+        df_xy.index = df_interest.index
+        df          = pd.concat([df_interest, df_xy], axis=1)
+        df.columns  = [str(col).replace('.', '_') for col in df.columns]
+
+        df['geom']  = df.apply(lambda x: Point((float(x.POINT_X), float(x.POINT_Y))), axis=1)
+        geo_df      = geopandas.GeoDataFrame(df, geometry='geom')
+        geo_df.to_file(op.join(self.path_gis, 'DTW_Chg.shp'), driver='ESRI Shapefile')
+        print 'DTW ShapeFile Written: {}'.format(op.join(self.path_gis, 'DTW_Chg.shp'))
 
 plt.style.use('seaborn')
 PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-18')
 rc_params()
 dtw = dtw(PATH_res)
 # dtw.plot_area_hours()
-# dtw.interesting()
-dtw.tmp()
 # dtw.plot_interesting()
+dtw.shp_interesting()
 plt.show()
