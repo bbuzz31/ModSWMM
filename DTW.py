@@ -18,9 +18,9 @@ from Surf_Leak import surf_leak
 class dtw(res_base):
     def __init__(self, path_result):
         res_base.__init__(self, path_result)
-        # self.df      = pd.read_pickle(op.join(self.path_picks, 'dtw_seasons.df'))
-        self.df_area = pd.read_pickle(op.join(self.path_picks, 'percent_at_surface.df'))#.loc['2011-12-01-00':, :]
-        self.dtws    = BB.uniq([float(dtw.split('_')[1]) for dtw in self.df_area.columns])
+        self.df_year  = pd.read_pickle(op.join(self.path_picks, 'dtw_yr.df'))
+        self.df_area  = pd.read_pickle(op.join(self.path_picks, 'percent_at_surface.df'))#.loc['2011-12-01-00':, :]
+        self.dtws     = BB.uniq([float(dtw.split('_')[1]) for dtw in self.df_area.columns])
 
     def plot_area_hours(self):
         """ Plot area vs hours, curves of SLR, subplots of DTW """
@@ -45,23 +45,38 @@ class dtw(res_base):
         fig.set_label('dtw_area')
         return fig
 
-    def interesting(self, maxchg=-10, maxdtw=30.48):
-        """ Make locs where significant changes due to SLR AND low dtw """
-        figures   = []
-        df  *= 100
-
+    def interesting(self, maxchg=-30, maxdtw=30.48):
+        """ Make locs where signif changes due to SLR AND low dtw  units=cm """
+        figures        = []
+        self.df_year  *= 100
+        df_inter       = pd.DataFrame(index=self.df_year.index)
         for i in range(len(self.slr_sh) - 1):
-            ser_lower    = self.df.filter(like=self.slr_sh[i]).mean(axis=1)
-            ser_higher   = self.df.filter(like=self.slr_sh[i+1]).mean(axis=1)
+            slr_low            = float(self.slr_sh[i])
+            slr_high           = float(self.slr_sh[i+1])
+            chg_col            = 'chg_{}'.format(slr_high)
+            df_inter[slr_low]  = self.df_year[slr_low]
+            df_inter[slr_high] = self.df_year[slr_high]
             # max change will be a meter since that's diff in slr_sh
-            ser_chg      = ser_higher - ser_lower
+            df_inter[chg_col]  = df_inter[slr_high] - df_inter[slr_low]
 
-            mat_high_dtw = ser_higher.values.reshape(74, 51)
-            mat_change   = ser_chg.values.reshape(74, 51)
+            ### make the intersections
+            df_inter['inter_{}'.format(slr_high)] = (
+                                       df_inter.loc[:, slr_high].where(
+                                      (df_inter.loc[:, slr_high]<maxdtw)
+                                    & (df_inter.loc[:, chg_col].values<maxchg)))
 
-            df_mean      = pd.DataFrame({self.slr[i]: ser_lower,
-                                    self.slr[i+1] : ser_higher,
-                                    'change' : ser_chg})
+        return df_inter
+
+    def tmp(self, maxchg=-10, maxdtw=30.48):
+        df_inter         = self.interesting()
+        for i in range(len(self.slr_sh) - 1):
+            slr_low      = float(self.slr_sh[i])
+            slr_high     = float(self.slr_sh[i+1])
+            chg_col      = 'chg_{}'.format(slr_high)
+            inter_col    = 'inter_{}'.format(slr_high)
+            arr_change   = df_inter[chg_col].values.reshape(74, 51)
+            arr_high_dtw = df_inter[slr_high].values.reshape(74, 51)
+            arr_inter    = df_inter[inter_col].values.reshape(74, 51)
 
             ### PLOT
             fig, axes = plt.subplots(ncols=3)
@@ -69,78 +84,20 @@ class dtw(res_base):
             axe       = axes.ravel()
 
             # plot change
-            im = axe[0].imshow(mat_change, cmap=plt.cm.jet_r,
+            im = axe[0].imshow(arr_change, cmap=plt.cm.jet_r,
                                  vmin=-80, vmax=maxchg)
-            axe[0].set(title='Change in DTW (cm): {} m to {} (m) SLR'.format(
-                                          self.slr_sh[i], self.slr_sh[i+1]))
+            axe[0].set(title='Change in DTW cm: {} m to {} m SLR'.format(
+                                                    slr_low, slr_high))
 
             # plot dtw
-            im2 = axe[1].imshow(mat_high_dtw, cmap=plt.cm.jet_r,
+            im2 = axe[1].imshow(arr_high_dtw, cmap=plt.cm.jet_r,
                                      vmin=0, vmax=maxdtw)
-            axe[1].set(title='DTW (cm) for SLR: {} (m) '.format(self.slr_sh[1]))
+            axe[1].set(title='DTW cm for SLR: {} m '.format(slr_high))
 
-            # plot intersection
-            df_mean.where(df_mean.change.notnull(), -500, inplace=True)
-
-            df_inter = df_mean.where(df_mean.change < maxchg, 100)
-
-            df_inter.where(df_inter[self.slr[i+1]] < maxdtw, 100, inplace=True)
-            df_inter.where(df_inter.change != -500, np.nan, inplace=True)
-
-            im3  = axe[2].imshow(df_inter[self.slr[i+1]].values.reshape(74,51),
-                                                        cmap=plt.cm.jet_r)
-            axe[2].set(title='Locations with Change > {} (cm) and DTW < {}(cm)\nSLR: {} m'
-                                        .format(maxchg, maxdtw, self.slr_sh[1]))
-
-        return
-
-    ### OVERLAY THESE IN GIS; maybe with conductivities too
-    def plot_interesting(self, maxchg=-10, maxdtw=30.48):
-        """ Plot locs where significant changes due to SLR AND low dtw """
-        figures   = []
-        self.df     *= 100
-        for i in range(len(self.slr_sh) - 1):
-            ser_lower    = self.df.filter(like=self.slr_sh[i]).mean(axis=1)
-            ser_higher   = self.df.filter(like=self.slr_sh[i+1]).mean(axis=1)
-            # max change will be a meter since that's diff in slr_sh
-            ser_chg      = ser_higher - ser_lower
-
-            mat_high_dtw = ser_higher.values.reshape(74, 51)
-            mat_change   = ser_chg.values.reshape(74, 51)
-
-            df_mean      = pd.DataFrame({self.slr[i]: ser_lower,
-                                    self.slr[i+1] : ser_higher,
-                                    'change' : ser_chg})
-
-            ### PLOT
-            fig, axes = plt.subplots(ncols=3)
-            title     = fig.suptitle('Average DTW')
-            axe       = axes.ravel()
-
-            # plot change
-            im = axe[0].imshow(mat_change, cmap=plt.cm.jet_r,
-                                 vmin=-80, vmax=maxchg)
-            axe[0].set(title='Change in DTW (cm): {} m to {} (m) SLR'.format(
-                                          self.slr_sh[i], self.slr_sh[i+1]))
-
-            # plot dtw
-            im2 = axe[1].imshow(mat_high_dtw, cmap=plt.cm.jet_r,
-                                     vmin=0, vmax=maxdtw)
-            axe[1].set(title='DTW (cm) for SLR: {} (m) '.format(self.slr_sh[1]))
-
-            # plot intersection
-            df_mean.where(df_mean.change.notnull(), -500, inplace=True)
-
-            df_inter = df_mean.where(df_mean.change < maxchg, 100)
-
-            df_inter.where(df_inter[self.slr[i+1]] < maxdtw, 100, inplace=True)
-            df_inter.where(df_inter.change != -500, np.nan, inplace=True)
-
-            im3  = axe[2].imshow(df_inter[self.slr[i+1]].values.reshape(74,51),
-                                                        cmap=plt.cm.jet_r)
-            axe[2].set(title='Locations with Change > {} (cm) and DTW < {}(cm)\nSLR: {} m'
-                                        .format(maxchg, maxdtw, self.slr_sh[1]))
-
+            im3  = axe[2].imshow(arr_inter, cmap=plt.cm.jet_r)
+            axe[2].set(title='Locations with Abs Change > {} cm and DTW < {} cm\
+                              \nSLR: {} m to {} m'.format(-1*maxchg, maxdtw,
+                                                         slr_low, slr_high))
         return
 
     def shp_interesting(self):
@@ -151,5 +108,7 @@ PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-18')
 rc_params()
 dtw = dtw(PATH_res)
 # dtw.plot_area_hours()
-dtw.plot_interesting()
+# dtw.interesting()
+dtw.tmp()
+# dtw.plot_interesting()
 plt.show()

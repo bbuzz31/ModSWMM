@@ -21,7 +21,7 @@ class fmt_base(object):
         _               = self.make_scenarios_slr()
         __              = self.make_ts()
         ___             = self.make_swmm_grid('heads'), self.make_swmm_grid('run')
-        self.seasons    = ['Winter', 'Spring', 'Summer', 'Fall']
+        # self.seasons    = ['Winter', 'Spring', 'Summer', 'Fall']
 
     def make_scenarios_slr(self):
         """ Get Scenarios and SLR from Dirs """
@@ -117,6 +117,28 @@ class fmt_dtw(fmt_base):
         df_res.to_pickle(op.join(self.path_picks, fname))
         print 'DataFrame pickled to: {}'.format(op.join(self.path_picks, fname))
 
+    def make_df_dtw_year(self):
+        """
+        Make annual average DTW
+        Convert heads to DTW for all times, all SLR, all locations
+        Return Df with 1 indexed row/col as index
+        """
+        df_yrs = []
+        for i, slr in enumerate(self.slr):
+            mat_dtw = self._make_mat_dtw(slr).reshape(-1, 3774)
+            df_dtw  = pd.DataFrame(mat_dtw, index=self.ts_hr,
+                                             columns=range(10001, 10001 + 3774))
+            # take one full year of dates, resample by season
+            df_yr   = df_dtw.loc['2011-12-01-00':'2012-11-30-00',:].mean(0).T
+            print df_yr.head()
+            df_yr.name = float(slr)
+            df_yrs.append(df_yr)
+        df_res = pd.concat([df_yr for df_yr in df_yrs], axis=1)
+        fname = 'dtw_yr.df'
+        df_res.to_pickle(op.join(self.path_picks, fname))
+        print 'DataFrame pickled to: {}'.format(op.join(self.path_picks, fname))
+
+
     def _make_mat_dtw(self, slr):
         """ Make Matrix of Elevations - Heads (DTW) (ts x 74 x 51) """
         mat_surf     = self.fill_grid(self.df_swmm.Esurf)
@@ -211,6 +233,5 @@ def main(path_result):
     print ('Pickled Runoff Results')
 
 if __name__ == '__main__':
-    PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-18')
-    # main(PATH_result)
-    fmt_run(PATH_result).make_df_vol_area()
+    # PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-18')
+    main(PATH_result)
