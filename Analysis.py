@@ -394,7 +394,7 @@ class summary(res_base):
         fig.set_label('hypsometry')
         return fig
 
-    def plot_head_hist(self, bins=25):
+    def plot_hist_head(self, bins=25):
         """ Create a Histogram of Heads for each SLR Scenario """
         # dict_heads = self._load_swmm('heads')
         dict_heads  = self._load_fhd()
@@ -420,7 +420,7 @@ class summary(res_base):
                             histtype='bar', facecolor=colors[i], alpha=0.825
                             )
 
-            colname         = 'SLR-{} (m)'.format(slr)
+            colname         = 'SLR-{} m'.format(slr)
             center = (bin_edges[:-1] + bin_edges[1:]) / 2
             # fit a line to the middles of the bins
             fit  = interpolate.InterpolatedUnivariateSpline(bin_edges[:-1], n)
@@ -876,7 +876,7 @@ def make_plots():
     # summary_obj.plot_ts_uzf_sums()
     # summary_obj.plot_land_z()
     # summary_obj.plot_hypsometry()
-    # summary_obj.plot_head_hist()
+    # summary_obj.plot_hist_head()
     # summary_obj.plot_2d_head_chg()
     # summary_obj.plot_head_contours()
     # summary_obj.save_cur_fig()
