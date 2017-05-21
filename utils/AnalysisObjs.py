@@ -255,26 +255,41 @@ class summary(res_base):
         self.loc_1d         = bcpl.cell_num(self.row, self.col) + 10000
         self.arr_land_z     = np.load(op.join(self.path_data, 'Land_Z.npy'))
         self.df_grid        = pd.read_csv(op.join(self.path_data, 'MF_grid.csv'))
+        self.var_map        = OrderedDict([('uzf_rch','GW  Recharge'),
+                                            ('uzf_et', 'GW  ET')])
+    def ts_uzf_sums(self, smooth=False):
+        """
+        Format UZF RCH, UZF ET, and Precip for Plotting.
+        Optionally Smooth
+        Returns df of monthly values for ONE year.
+        """
+        df_sums  = pd.DataFrame({'Precip':self.df_sys['Precip_{}'.format(
+                                        self.slr[0])]}).resample('D').sum()
+        dict_uzf = self._load_uzf()
+        for name, arr in dict_uzf.items():
+            if not name in self.var_map:
+                continue
+            for slr in self.slr:
+                arr_sum = arr[slr].reshape(len(self.ts_day),-1).sum(1)
+                df_sums['{}_{}'.format(self.var_map[name], slr)] = arr_sum
+
+        # truncate init conditions and resample to monthly
+        df_mon   = abs(df_sums).loc[self.st:self.end, :].resample('MS').mean()
+        if not smooth:
+            return df_mon
+
+        ### no good; could plot as stepped bar graph maybe with lines stacked
+        df_upsampled = abs(df_sums.asfreq('T'))
+        df_upsampled.interpolate(method='spline', order=3, inplace=True)#, bbox=[0,20000])
+
+        return df_upsampled.loc[self.st:self.end, :]
 
     def plot_ts_uzf_sums(self):
         """
         Plot Sum of Recharge, ET,  at all locs, each step, monthly mean
         PLot Precipation
         """
-        df_sums  = pd.DataFrame({'Precip':self.df_sys['Precip_{}'.format(
-                                        self.slr[0])]}).resample('D').sum()
-        var_map  = OrderedDict([('uzf_rch','GW  Recharge'), ('uzf_et', 'GW  ET')])
-        dict_uzf = self._load_uzf()
-        for name, arr in dict_uzf.items():
-            if not name in var_map:
-                continue
-            for slr in self.slr:
-                arr_sum = arr[slr].reshape(len(self.ts_day),-1).sum(1)
-                df_sums['{}_{}'.format(var_map[name], slr)] = arr_sum
-
-        # truncate init conditions and resample to monthly
-        df_mon   = abs(df_sums).loc[self.st:self.end, :].resample('MS').mean()
-        ### PLOT
+        df_mon   = self.ts_uzf_sums()
         fig      = plt.figure()
         axe      = []
         gs       = gridspec.GridSpec(3, 2)
@@ -282,7 +297,7 @@ class summary(res_base):
         axe.append(fig.add_subplot(gs[:2, 1], sharey=axe[0]))
         axe.append(fig.add_subplot(gs[2, :]))
 
-        for i, var in enumerate(var_map.values()):
+        for i, var in enumerate(self.var_map.values()):
             df_slr   = df_mon.filter(like=str(var))
             for j, slr in enumerate(df_slr.columns):
                 axe[i].plot_date(df_slr.index, df_slr[slr], '-',
