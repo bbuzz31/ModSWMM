@@ -317,8 +317,6 @@ class summary(res_base):
 
         return fig
 
-
-
     def plot_hypsometry(self, bins=50):
         """ Histogram of Elevations of Model Cells """
         fig, axes       = plt.subplots()
@@ -327,8 +325,8 @@ class summary(res_base):
         n, bin_edges, _ = axes.hist(arr_cln, bins=bins, facecolor='darkblue',
                         alpha=0.825, rwidth=0.55, align='left', histtype='bar')
 
-        axes.set_xlabel('Elevation (m)', labelpad=20, size=13)
-        axes.set_ylabel('Frequency', labelpad=20, size=13)
+        axes.set_xlabel('Elevation (m)')
+        axes.set_ylabel('Frequency')
         # format ticks
         axes.xaxis.set_ticks(np.linspace(0.0, 9.0, 10))
         axes.xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
@@ -355,14 +353,14 @@ class summary(res_base):
             arr_cln   = arr_cln[~np.isnan(arr_cln)].flatten()[154:-30] # for both
             # for converting absolute counts to between 0 1
             weights   = (np.ones_like(arr_cln)/len(arr_cln))
-
             mean, std       = arr_cln.mean(), arr_cln.std()
+            colname = 'SLR: {} m'.format(slr)
             n, bin_edges, _ = axe[i].hist(arr_cln, bins=bins, #normed=True,
                             align='left', rwidth=0.55,  #weights=weights,
-                            histtype='bar', facecolor=colors[i], alpha=0.825
-                            )
+                            histtype='bar', facecolor=colors[i], alpha=0.825,
+                            label=colname)
 
-            colname = 'SLR-{} m'.format(slr)
+
             center  = (bin_edges[:-1] + bin_edges[1:]) / 2
             # fit a line to the middles of the bins
             fit     = spline(bin_edges[:-1], n)
@@ -374,21 +372,21 @@ class summary(res_base):
             # plot distributions on the bottom
             axe[3].plot(x2, y, color=colors[i], label=colname)
 
-            axe[i].set_title('SLR: {} (m)'.format(slr))
+            # axe[i].set_title('SLR: {} m'.format(slr))
+            axe[i].legend(loc='upper right', frameon=True, shadow=True, facecolor='w')
             axe[i].xaxis.set_ticks(np.linspace(0.0, 9.0, 10.0))
-            axe[i].xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
+            # axe[i].xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
             axe[i].set_xlim(-0.25, 7.7)
-            axe[0].set_ylabel('Frequency', labelpad=15)
-            # axe[1].set_xlabel('GW Head (m)', labelpad=15)
+            axe[0].set_ylabel('Frequency')
 
         # turn off shared ticks
         plt.setp(axe[1].get_yticklabels(), visible=False)
         plt.setp(axe[2].get_yticklabels(), visible=False)
 
         # bottom subplot properties
-        axe[3].legend()
-        axe[3].set_xlabel('GW Head (m)', labelpad=10)
-        axe[3].set_ylabel('Frequency', labelpad=15)
+        axe[3].legend(loc='upper right', frameon=True, shadow=True, facecolor='w')
+        axe[3].set_xlabel('GW Head (m)')
+        axe[3].set_ylabel('Frequency')
         axe[3].xaxis.set_ticks(np.linspace(0.0, 9.0, 10))
         axe[3].xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
         axe[3].set_xlim(-0.05, 7.7)
@@ -425,9 +423,9 @@ class runoff(res_base):
         # could probably change global alpha and color cycles
         df_run.plot.bar(ax=axes, color=['darkblue', 'darkgreen', 'darkred'], alpha=0.75)
         axes.set_xticklabels(df_run.index.map(lambda t: t.strftime('%b')))
-        axes.legend(loc='upper left')
-        axes.set_xlabel('Time', labelpad=15, size=14)
-        axes.set_ylabel('Runoff Rate (CMS)', labelpad=15, size=14)
+        axes.legend(loc='upper left', frameon=True, shadow=True, facecolor='w')
+        axes.set_xlabel('Time')#, labelpad=15, size=14)
+        axes.set_ylabel('Runoff Rate (CMS)')#, labelpad=15, size=14)
         axes.yaxis.grid(True)
 
         fig.autofmt_xdate(bottom=0.2, rotation=20, ha='center')
@@ -466,14 +464,15 @@ class runoff(res_base):
             df_days.plot(ax=axe[i], title='Depth >= {} mm'.format(vol),
                          color=['darkblue', 'darkgreen', 'darkred'], alpha=0.5)
 
-            axe[i].set_xlabel('% Area', labelpad=15, size=14)
-            axe[i].set_ylabel('Hours',  labelpad=15, size=14)
+            axe[i].set_xlabel('% Area')
+            axe[i].set_ylabel('Hours')
             axe[i].yaxis.grid(True)
-        fig.subplots_adjust(left=0.075, right=0.92, wspace=0.15, hspace=0.15)
+            axe[i].legend(loc='upper right', frameon=True, shadow=True, facecolor='w')
+        fig.subplots_adjust(left=0.125, right=0.92, wspace=0.175, hspace=0.35)
         fig.set_label('runoff_area')
         return fig
 
-    def __leak_Vs_runoff(self):
+    def __leak_vs_runoff__(self):
         """
         Compare surface leakage and runoff for whole simulation
         Runoff units may be off / and uzf. both time and area (200 * 200 * 1455?)
@@ -509,11 +508,12 @@ class dtw(res_base):
             for area in area_bins:
                 df_hrs.loc[area, :] = (df_area_one>=area).sum()
             BB.fill_plot(df_hrs, axe[i], title='DTW <= {} m'.format(dtw))
-            axe[i].set_xlabel('% Area', size=15, labelpad=15)
-            axe[i].set_ylabel('Hours', size=15, labelpad=15)
+            axe[i].set_xlabel('% Area')
+            axe[i].set_ylabel('Hours')
             axe[i].legend(loc='lower left', frameon=True, shadow=True, facecolor='white')
             axe[i].set_ylim((0, len(df_area_one)*1.10))
             axe[i].yaxis.grid(True)
+        fig.subplots_adjust(left=0.125, right=0.92, wspace=0.175, hspace=0.35)
         fig.set_label('dtw_area')
         return fig
 
@@ -641,13 +641,16 @@ def set_rc_params():
     mpl.rcParams['figure.figsize']   = (16, 9)
     mpl.rcParams['figure.titlesize'] = 18
     mpl.rcParams['axes.grid']        = False
-    mpl.rcParams['axes.titlesize']   = 15
+    mpl.rcParams['axes.titlesize']   = 14
     mpl.rcParams['axes.labelsize']   = 15
-    mpl.rcParams['axes.labelpad']    = 15
+    mpl.rcParams['axes.labelpad']    = 20
 
-    mpl.rcParams['savefig.dpi']      = 2000
+    mpl.rcParams['xtick.labelsize']   = 12.5
+    mpl.rcParams['ytick.labelsize']   = 12.5
+
+    # mpl.rcParams['savefig.dpi']      = 2000
     mpl.rcParams['savefig.format']   = 'pdf'
-    # mpl.rcParams['figure.figsize']   = (18, 12) # for saving
+    mpl.rcParams['figure.figsize']   = (18, 12) # for saving
     # matplotlib.rcParams['axes.labelweight'] = 'bold'
     for param in mpl.rcParams.keys():
         # print param

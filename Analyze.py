@@ -2,9 +2,20 @@
 Run Analysis
 05.21.2017
 """
+import os
 import os.path as op
+import matplotlib as mpl
 
 from utils.AnalysisObjs import *
+
+def savefigs(path):
+    path_fig = op.join(path, 'Figures')
+    if not op.isdir(path_fig):
+        os.makedirs(path_fig)
+    figs = list(map(plt.figure, plt.get_fignums()))
+    for fig in figs:
+        # mpl.rcParams['figure.figsize']   = (18, 12) # figure out a way to make this work
+        fig.savefig(op.join(path_fig, fig.get_label()), dpi=300)
 
 
 def run_summary():
@@ -17,7 +28,7 @@ def run_summary():
 
 def run_dtw():
     dtw_obj = dtw(PATH_res)
-    dtw_obj.plot_area_hours()
+    # dtw_obj.plot_area_hours()
     # dtw_obj.plot_hist_dtw()       # not used
     # dtw_obj.plot_interesting()    # arcmap
     # dtw_obj.shp_interesting()
@@ -32,6 +43,7 @@ def run_runoff():
 
 PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-18')
 run_summary()
-# run_dtw()
-# run_runoff()
-plt.show()
+run_dtw()
+run_runoff()
+savefigs(PATH_res)
+# plt.show()
