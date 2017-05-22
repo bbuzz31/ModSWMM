@@ -29,10 +29,11 @@ def run_summary():
 
 def run_dtw():
     dtw_obj = dtw(PATH_res)
-    dtw_obj.plot_area_hours()
+    # dtw_obj.plot_area_hours()
     # dtw_obj.plot_hist_dtw()       # not used
+    # dtw_obj.interesting()    # arcmap
     # dtw_obj.plot_interesting()    # arcmap
-    # dtw_obj.shp_interesting()
+    dtw_obj.shp_interesting()
 
 def run_runoff():
     runobj_obj = runoff(PATH_res)
@@ -41,8 +42,8 @@ def run_runoff():
     # runobj_obj.shp_chg()
 
 PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-21')
-run_summary()
-# run_dtw()
+# run_summary()
+run_dtw()
 # run_runoff()
-savefigs(PATH_res)
+# savefigs(PATH_res)
 plt.show()

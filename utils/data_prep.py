@@ -158,7 +158,7 @@ def subs(swmm, soils, outfalls, storage):
 
     df_subs = df_subs.rename(columns=rename)
     ##### SUBCATCHMENTS
-    keep = ['ROW', 'COLUMN', 'Outlet', 'perImperv', 'perSlope',
+    keep = ['ROW', 'COLUMN', 'Outlet', 'perImperv', 'perSlope', 'Majority',
             'N_Perv', 'S_Perv', 'Esurf', 'Min_Inf', 'CENTROID_X', 'CENTROID_Y']
 
 
@@ -309,8 +309,8 @@ def write_all():
     # df_junctions.to_csv(op.join(PATH_data,'SWMM_junctions.csv'))
     # df_links.to_csv(op.join(PATH_data,'SWMM_links.csv'))
     # df_outfalls.to_csv(op.join(PATH_data,'SWMM_outfalls.csv'))
-    df_storage.to_csv(op.join(PATH_data,'SWMM_storage.csv'))
-    #df_subs.to_csv(op.join(PATH_data, 'SWMM_subs.csv'))
+    # df_storage.to_csv(op.join(PATH_data,'SWMM_storage.csv'))
+    df_subs.to_csv(op.join(PATH_data, 'SWMM_subs1.csv'))
     # df_inflows.to_csv(op.join(PATH_data,'SWMM_inflows.csv'))
     #
     # #
@@ -323,9 +323,7 @@ def write_all():
 
 # *************************   INITIALIZE FILEPATHS  ************************** #
 PATH_home         = op.expanduser('~')
-PATH_root         = op.join(PATH_home, 'Google_Drive','WNC', 'Coupled', time.strftime('%b'))
-PATH_data         = op.join(PATH_root, 'Data')
-#mf_model          = op.join(PATH_root, 'Flopy', 'WNC_SS-Mac', 'WNC-SS')
+PATH_data         = op.join(PATH_home, 'Google_Drive','WNC', 'Data')
 
 ### data
 # export raw grid muse/flopy to arcgis

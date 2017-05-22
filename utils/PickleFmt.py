@@ -230,5 +230,5 @@ def main(path_result):
     print ('Pickled Runoff Results')
 
 if __name__ == '__main__':
-    PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-21_1')
+    PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-21')
     main(PATH_result)

@@ -35,8 +35,6 @@ class res_base(object):
         self.df_swmm    = pd.read_csv(op.join(self.path_data, 'SWMM_subs.csv'),
                                                            index_col='Zone')
 
-        self.sys_vars   = BB.uniq([slr.rsplit('_', 1)[0] for slr in self.df_sys.columns])
-
         self.ts_day     = self.df_sys.resample('D').first().index
         self.ts_hr      = self.df_sys.index
         self.subs       = self.df_swmm.index.values
@@ -680,17 +678,26 @@ class dtw(res_base):
 
     def shp_interesting(self):
         """ Write shapefile of interesting change locations due to SLR """
-        df_interest = self.interesting()
+        df_inter    = self.interesting()
+        ### Attach Subcatchment Characteristics
+        df_interes  = df_inter.join(self.df_swmm)
+        ### Attach KS Characteristics
+        df_mf       = pd.read_csv(op.join(self.path_data, 'MF_GRID.csv')).filter(like='K')
+        df_mf.index = df_interes.index
+        df_interest = df_interes.join(df_mf)
+
         df_xy       = self.df_xy.loc[:, ['POINT_X', 'POINT_Y']]
         df_xy.index = df_interest.index
         df          = pd.concat([df_interest, df_xy], axis=1)
+
         df.columns  = [str(col).replace('.', '_') for col in df.columns]
+        # print df.loc['Zone', 1553]
 
         df['geom']  = df.apply(lambda x: Point((float(x.POINT_X), float(x.POINT_Y))), axis=1)
         geo_df      = geopandas.GeoDataFrame(df, geometry='geom')
         geo_df.to_file(op.join(self.path_gis, 'DTW_Chg.shp'), driver='ESRI Shapefile')
         print 'DTW ShapeFile Written: {}'.format(op.join(self.path_gis, 'DTW_Chg.shp'))
-
+        return geo_df
 def set_rc_params():
     plt.style.use('seaborn')
 

@@ -18,7 +18,7 @@ Arguments:
 Options:
   --fmt    Run Formatting Script                                    [default: 0]
   --sub    Make Matrixes of a SWMM Variable
-  --soil   SWMM Soil                                                [default: 0]
+  --evap   SWMM Soil                                                [default: 0]
   --help   Print this message
 
 Notes:
@@ -109,52 +109,6 @@ class pickle_swmm(pickle_base):
         swmm_sys.to_pickle(path_res)
         print 'DataFrame pickled to: {}'.format(path_res)
 
-    def _sub_heads(self, scenario):
-        """
-        All Subcatchments, All Times. Just Head.
-        Pickle a npy for each scenario separately.
-        Based on Pickles_orig().subs_rungw
-        """
-        varnames  = ['Head']
-        variables = [6]
-
-        slr_name  = op.basename(scenario)
-        slr       = slr_name[4:7]
-        out_file  = op.join(scenario, '{}.out'.format(slr_name))
-        sub_names = [int(name) for name in swmtbx.listdetail(out_file,'subcatchment')]
-        sys_mat   = np.zeros([len(self.ts_hr), len(sub_names)*len(varnames)])
-
-        for i, sub in enumerate(sub_names):
-            for j, var in enumerate(variables):
-                sys_mat[:, j+i*len(variables)] = swmtbx.extract_arr(out_file,
-                                                'subcatchment,{},{}'.format(sub,var))
-
-        path_arr  = op.join(self.path_picks, 'swmm_heads_{}.npy'.format(slr))
-        np.save(pickle_path, sys_mat)
-
-    def _sub_run(self, scenario):
-        """
-        All Subcatchments, All Times. Just Runoff.
-        Pickle a npy for each scenario separately.
-        Based on subs_rungw
-        """
-        varnames  = ['Run']
-        variables = [4]
-
-        slr_name  = op.basename(scenario)
-        slr       = slr_name[4:7]
-        out_file  = op.join(scenario, '{}.out'.format(slr_name))
-        sub_names = [int(name) for name in swmtbx.listdetail(out_file,'subcatchment')]
-        sys_mat   = np.zeros([len(self.ts_hr), len(sub_names)*len(varnames)])
-
-        for i, sub in enumerate(sub_names):
-            for j, var in enumerate(variables):
-                sys_mat[:, j+i*len(variables)] = swmtbx.extract_arr(out_file,
-                                                'subcatchment,{},{}'.format(sub,var))
-
-        path_arr = op.join(self.path_picks, 'swmm_run_{}.npy'.format(slr))
-        np.save(pickle_path, sys_mat)
-
 class pickle_uzf(pickle_base):
     def __init__(self, path_result):
         pickle_base.__init__(self, path_result)
@@ -230,7 +184,7 @@ def _sub_var(args):
     Pickle a npy for each scenario separately.
     Based on subs_rungw
     """
-    param_map = {'inf' : 3, 'run' : 4, 'gwout' : 5, 'heads' : 6, 'soil' : 7}
+    param_map = {'evap' : 2, 'run' : 4, 'gwout' : 5, 'heads' : 6, 'soil' : 7}
     scenario, varname, ts, path_pickle = args
 
     # varnames  = [varname]
@@ -261,7 +215,7 @@ if __name__ == '__main__':
     start       = time.time()
     arguments   = docopt(__doc__)
     typecheck   = Schema({'PATH' : os.path.exists, '--fmt' : Use(int),
-                          '--soil' : Use(int)}, ignore_extra_keys=True)
+                          '--evap' : Use(int)}, ignore_extra_keys=True)
     PATH_result = op.abspath(typecheck.validate(arguments)['PATH'])
     args = typecheck.validate(arguments)
 
@@ -273,10 +227,10 @@ if __name__ == '__main__':
     if args['--fmt']:
         PickleFmt.main(PATH_result);
 
-    elif args['--soil']:
+    elif args['--evap']:
         print 'Pickling SWMM Soil to {} ... '.format(path_picks)
         pool = Pool(processes=len(scenarios))
-        res = pool.map(_sub_var, zip(scenarios, ['soil']*len(scenarios),
+        res = pool.map(_sub_var, zip(scenarios, ['evap']*len(scenarios),
                                [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
 
     ### Multiprocessing

@@ -72,7 +72,7 @@ class InitSim(object):
         self.path_child = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled',
                                 time.strftime('%b')+ext, 'Child_{}'.format(slr))
         self.path_data  = op.join(self.path_child, 'Data')
-        self.path_res   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-22')
+        self.path_res   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-23')
         self.start      = time.time()
 
     def mf_params(self):
@@ -402,7 +402,7 @@ if __name__ == '__main__':
         ARGS = zip(SLR, [args['KPERS']]*len(SLR))
         pool = Pool(processes=len(SLR))
         pool.map(main, ARGS)
-        call(['PicklesRaw.py', '/Volumes/BB_4TB/Thesis/Results_05-22'])
+        call(['PicklesRaw.py', '/Volumes/BB_4TB/Thesis/Results_05-23'])
 
     else:
         # run MF SS and create SWMM .INP
