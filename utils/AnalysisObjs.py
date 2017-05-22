@@ -257,6 +257,7 @@ class summary(res_base):
         self.df_grid        = pd.read_csv(op.join(self.path_data, 'MF_grid.csv'))
         self.var_map        = OrderedDict([('uzf_rch','GW  Recharge'),
                                             ('uzf_et', 'GW  ET')])
+
     def ts_uzf_sums(self, smooth=False):
         """
         Format UZF RCH, UZF ET, and Precip for Plotting.
@@ -275,6 +276,7 @@ class summary(res_base):
 
         # truncate init conditions and resample to monthly
         df_mon   = abs(df_sums).loc[self.st:self.end, :].resample('MS').mean()
+        # print df_mon.head()
         if not smooth:
             return df_mon
 
@@ -326,7 +328,7 @@ class summary(res_base):
         axe[2].set_ylabel('Depth, in millimeters', labelpad=40)
         plt.setp(axe[1].get_yticklabels(), visible=False)
 
-        gs.update(bottom=0.075, hspace=0.6, wspace=0.15)
+        gs.update(bottom=0.075, top=0.925, hspace=0.6, wspace=0.15)
 
         fig.set_label('ts_summary')
 
@@ -404,7 +406,7 @@ class summary(res_base):
         axe[3].xaxis.set_ticks(np.linspace(0.0, 9.0, 10))
         axe[3].xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
         axe[3].set_xlim(-0.05, 7.7)
-        gs.update(bottom=0.075, hspace=0.3, wspace=0.15)
+        gs.update(bottom=0.1, top=0.95, hspace=0.3, wspace=0.15)
         fig.set_label('hist_head')
 
     def plot_land_z(self):
@@ -420,6 +422,48 @@ class summary(res_base):
         cbar_ax           = fig.add_axes([0.85, 0.175, 0.025, 0.6], xlabel='Elevation (m)')
         fig.colorbar(im, cbar_ax, spacing='proportional')
         return fig
+
+    def shp_heads(self, shpname='Head_Chg.shp'):
+        """ Format and attach Avg Yearly Heads to Grid for Arc """
+        dict_heads = self._load_fhd()
+        df_heads   = self.df_xy.loc[:, ['POINT_X', 'POINT_Y']]
+        for slr in self.slr:
+            arr_head            = dict_heads[slr].reshape(len(self.ts_day), -1)
+            # inactive to high for conours ;;; should make np.nan in pickles
+            arr_cln             = np.where(arr_head < -100, np.nan, arr_head)
+            # truncate dates
+            arr_yr              = arr_cln[154:519, :]
+            col                 = 'SLR_{}-SS'.format(int(slr))
+            # store SS and avg transient in data frame
+            df_heads[col]       = arr_cln[0, :]
+            df_heads[col[:-3]]  = arr_cln.mean(0)
+
+        # add change columns
+        df_heads['Chg_1_0']     = df_heads['SLR_1'] - df_heads['SLR_0']
+        df_heads['Chg_2_1']     = df_heads['SLR_2'] - df_heads['SLR_1']
+        df_heads['Chg_2_0']     = df_heads['SLR_2'] - df_heads['SLR_0']
+
+        df_heads['Chg_1_0_SS']  = df_heads['SLR_1-SS'] - df_heads['SLR_0-SS']
+        df_heads['Chg_2_1_SS']  = df_heads['SLR_2-SS'] - df_heads['SLR_1-SS']
+        df_heads['Chg_2_0_SS']  = df_heads['SLR_2-SS'] - df_heads['SLR_0-SS']
+        df_heads['geom']        = df_heads.apply(lambda x: Point((float(x.POINT_X),
+                                                     float(x.POINT_Y))), axis=1)
+        geo_df                  = geopandas.GeoDataFrame(df_heads, geometry='geom')
+        shpfile                 = op.join(self.path_gis, shpname)
+        geo_df.to_file(shpfile, driver='ESRI Shapefile')
+        print 'Head ShapeFile Written: {}'.format(shpfile)
+
+        return df_heads
+
+    # maybe add this to gw evap?
+    def _surf_evap(self):
+        """ Format Surface Evap to add to GW ET """
+        area = 1455
+        df_evap = self.df_sys.filter(like='Surf_Evap').resample('D').sum()/24
+        df_evap /= 1000
+        df_evap*=area
+        # print df_evap
+
 
 class runoff(res_base):
     def __init__(self, path_result):
@@ -662,7 +706,7 @@ def set_rc_params():
 
     # mpl.rcParams['savefig.dpi']      = 2000
     mpl.rcParams['savefig.format']   = 'pdf'
-    # mpl.rcParams['figure.figsize']   = (18, 12) # for saving
+    mpl.rcParams['figure.figsize']   = (18, 12) # for saving
     # matplotlib.rcParams['axes.labelweight'] = 'bold'
     for param in mpl.rcParams.keys():
         # print param

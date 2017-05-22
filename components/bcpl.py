@@ -130,8 +130,8 @@ def mf_get_all(path_root, mf_step, **params):
                     # first depth, for checking coupling -- or maybe use
                     for x in range(line_start, line_start+1):
                         # average:
-                        for x in range(line_start, line_start+40):
-                            theta += float(linecache.getline(each, x).split()[-1])/40
+                        # for x in range(line_start, line_start+40):
+                            # theta += float(linecache.getline(each, x).split()[-1])/40
                         theta_uzfb[row][col] = theta
                     looking = False
 
