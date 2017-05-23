@@ -151,18 +151,22 @@ class res_base(object):
                 continue
         return 'Gagefile for row {}, col {}, not found in: {}'.format(row, col, self.path)
 
-    def _load_swmm(self, var='run', scen=False):
+    def _load_swmm(self, var='run', scen=False, path=False):
         """
         Load Pickled SWMM (full grid) Arrays
         Args:
-            var = 'run' or 'heads'
-            slr = 0.0, 1.0, or 2.0 to return that array
+            var  = 'run' or 'heads'
+            slr  = 0.0, 1.0, or 2.0 to return that array
+            path = optional path to pickles dir, for sensitivity results
         Returns : Dictionary of SLR : array of hrs x row x col
         """
+        if not path:
+            path = self.path_picks
+
         dict_var = {}
         for slr in self.slr:
-            dict_var[str(slr)] = np.load(op.join(self.path_picks,
-                                    'swmm_{}_grid_{}.npy').format(var, slr))
+            dict_var[str(slr)] = np.load(op.join(path,'swmm_{}_grid_{}.npy')
+                                                        .format(var, slr))
         if scen:
             return dict_var[str(slr)]
 
@@ -731,7 +735,7 @@ def set_rc_params():
 
     # mpl.rcParams['savefig.dpi']      = 2000
     mpl.rcParams['savefig.format']   = 'pdf'
-    mpl.rcParams['figure.figsize']   = (18, 12) # for saving
+    # mpl.rcParams['figure.figsize']   = (18, 12) # for saving
     # matplotlib.rcParams['axes.labelweight'] = 'bold'
     for param in mpl.rcParams.keys():
         # print param

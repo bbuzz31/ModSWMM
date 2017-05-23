@@ -43,11 +43,10 @@ def run_runoff():
 def run_sensitivity():
     sensitivity_obj = sensitivity(PATH_res)
     sensitivity_obj.total_et()
-    
+
 PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-21')
 # run_summary()
 # run_dtw()
 # run_runoff()
 # savefigs(PATH_res)
-run_sensitivity()
 plt.show()
