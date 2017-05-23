@@ -248,7 +248,7 @@ class res_base(object):
 class summary(res_base):
     """ Overall information """
     def __init__(self, path_results, row=0, col=2):
-        res_base.__init__(self, path_results)
+        super(summary, self).__init__(path_results)
         self.row, self.col  = row, col
         self.loc_1d         = bcpl.cell_num(self.row, self.col) + 10000
         self.arr_land_z     = np.load(op.join(self.path_data, 'Land_Z.npy'))
@@ -453,19 +453,34 @@ class summary(res_base):
 
         return df_heads
 
-    # maybe add this to gw evap?
-    def _surf_evap(self):
-        """ Format Surface Evap to add to GW ET """
-        area = 1455
-        df_evap = self.df_sys.filter(like='Surf_Evap').resample('D').sum()/24
-        df_evap /= 1000
-        df_evap*=area
-        # print df_evap
+    def _total_et(self):
+        """ Sum UZF evap and Surf Evap. Requires SWMM Evap Grid Pickled. """
+        dict_surf_et = self._load_swmm('evap')
+        dict_gw_et   = self._load_uzf('uzf_et')
+        df_evap      = pd.DataFrame(index=self.ts_day)
+        conv         = 1455/1000
+        for slr in self.slr:
+            arr_surf = dict_surf_et[str(slr)].reshape(len(self.ts_hr), -1)
+            ser_surf = pd.Series(np.nansum(arr_surf, 1), index=self.ts_hr)
+            # surface units in mm/day
+            df_evap['surf_{}'.format(slr)] = ser_surf.resample('D').sum() * conv
+            arr_gw   = dict_gw_et[slr].reshape(len(self.ts_day), -1)
+            df_evap['gw_{}'.format(slr)]   = abs(arr_gw.sum(1))
 
+        df_evap   = df_evap.loc[self.st:self.end,:].resample('MS').mean()
+        fig, axes = plt.subplots(ncols=3, sharey=True)
+        axe       = axes.ravel()
+        df_gw     = df_evap.filter(like='gw')
+        df_surf   = df_evap.filter(like='surf')
+        df_total  = pd.DataFrame(df_gw.values + df_surf.values, index=df_gw.index, columns=self.slr)
+
+        df_gw.plot(ax=axe[0])
+        df_surf.plot(ax=axe[1])
+        df_total.plot(ax=axe[2])
 
 class runoff(res_base):
     def __init__(self, path_result):
-        res_base.__init__(self, path_result)
+        super(runoff, self).__init__(path_result)
         self.df_area = pd.read_pickle(op.join(self.path_picks, 'percent_vols.df'))
         self.vols    = BB.uniq([float(vol.split('_')[1]) for vol in self.df_area.columns])
         self.dict    = self._load_swmm('run')
@@ -480,8 +495,8 @@ class runoff(res_base):
         df_run.plot.bar(ax=axes, color=['darkblue', 'darkgreen', 'darkred'], alpha=0.75)
         axes.set_xticklabels(df_run.index.map(lambda t: t.strftime('%b')))
         axes.legend(loc='upper left', frameon=True, shadow=True, facecolor='w')
-        axes.set_xlabel('Time')#, labelpad=15, size=14)
-        axes.set_ylabel('Runoff Rate (CMS)')#, labelpad=15, size=14)
+        axes.set_xlabel('Time', size=18)
+        axes.set_ylabel('Runoff Rate (CMS)', size=18)
         axes.yaxis.grid(True)
 
         fig.autofmt_xdate(bottom=0.2, rotation=20, ha='center')
@@ -544,7 +559,7 @@ class runoff(res_base):
 
 class dtw(res_base):
     def __init__(self, path_result):
-        res_base.__init__(self, path_result)
+        super(dtw, self).__init__(path_result)
         # pickle converted this to a year
         self.df_year  = pd.read_pickle(op.join(self.path_picks, 'dtw_yr.df'))
         self.df_area  = pd.read_pickle(op.join(self.path_picks, 'percent_at_surface.df'))#.loc['2011-12-01-00':, :]
@@ -569,9 +584,11 @@ class dtw(res_base):
             axe[i].legend(loc='lower left', frameon=True, shadow=True, facecolor='white')
             axe[i].set_ylim((0, len(df_area_one)*1.10))
             axe[i].yaxis.grid(True)
+            BB.print_all(df_hrs)
+            return
         fig.subplots_adjust(left=0.125, right=0.92, wspace=0.175, hspace=0.35)
         fig.set_label('dtw_area')
-        return fig
+        return df_hrs
 
     def plot_hist_dtw(self, bins=10):
         """ Create a Histogram of DTW for each SLR Scenario """
@@ -698,6 +715,7 @@ class dtw(res_base):
         geo_df.to_file(op.join(self.path_gis, 'DTW_Chg.shp'), driver='ESRI Shapefile')
         print 'DTW ShapeFile Written: {}'.format(op.join(self.path_gis, 'DTW_Chg.shp'))
         return geo_df
+
 def set_rc_params():
     plt.style.use('seaborn')
 
@@ -720,3 +738,10 @@ def set_rc_params():
         pass
 
 set_rc_params()
+
+# print 186 + 137 + 311 # 0.0
+# print 211 + 119 + 280 # 1.0
+# print 223 + 111 + 269 # 2.0
+#
+# print 277 + 542
+# print 228 + 326 + 337

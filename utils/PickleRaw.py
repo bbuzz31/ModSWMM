@@ -9,17 +9,16 @@ Examples:
   Create all:
   Pickles.py /Volumes/BB_4TB/Thesis/Results_03-19
 
-  Create matrices of swmm heads (edit heads in script)
-  Pickles.py . --sub
+  Create just infiltration
+  Pickles.py . --var head
 
 Arguments:
   PATH  Directory with list of Model Runs (starts with Results_)
 
 Options:
-  --fmt    Run Formatting Script                                    [default: 0]
-  --sub    Make Matrixes of a SWMM Variable
-  --evap   SWMM Soil                                                [default: 0]
-  --help   Print this message
+  --fmt=BOOL   Run Formatting Script                                [default: 0]
+  --var=STR    One SWMM Variable: inf, evap, run, heads, soil       [default: 0]
+  --help       Print this message
 
 Notes:
   Created: 2017-03-06
@@ -43,7 +42,7 @@ import flopy.utils.formattedfile as ff
 import flopy.utils.binaryfile as bf
 #
 from docopt import docopt
-from schema import Schema, Use
+from schema import Schema, Use, Or
 
 from multiprocessing import Pool
 
@@ -184,7 +183,7 @@ def _sub_var(args):
     Pickle a npy for each scenario separately.
     Based on subs_rungw
     """
-    param_map = {'evap' : 2, 'run' : 4, 'gwout' : 5, 'heads' : 6, 'soil' : 7}
+    param_map = {'inf' : 3, 'evap' : 2, 'run' : 4, 'heads' : 6, 'soil' : 7}
     scenario, varname, ts, path_pickle = args
 
     # varnames  = [varname]
@@ -214,8 +213,8 @@ def main(path_result):
 if __name__ == '__main__':
     start       = time.time()
     arguments   = docopt(__doc__)
-    typecheck   = Schema({'PATH' : os.path.exists, '--fmt' : Use(int),
-                          '--evap' : Use(int)}, ignore_extra_keys=True)
+    typecheck   = Schema({'PATH'  : os.path.exists, '--fmt' : Use(int),
+                          '--var' : Or(Use(int), str)}, ignore_extra_keys=True)
     PATH_result = op.abspath(typecheck.validate(arguments)['PATH'])
     args = typecheck.validate(arguments)
 
@@ -227,27 +226,38 @@ if __name__ == '__main__':
     if args['--fmt']:
         PickleFmt.main(PATH_result);
 
-    elif args['--evap']:
-        print 'Pickling SWMM Soil to {} ... '.format(path_picks)
+    elif args['--var']:
+        print 'Pickling SWMM {} to {} ... '.format(args['--var'], path_picks)
         pool = Pool(processes=len(scenarios))
-        res = pool.map(_sub_var, zip(scenarios, ['evap']*len(scenarios),
-                               [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
+        res = pool.map(_sub_var, zip(scenarios, [args['--var']]*len(scenarios),
+                          [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
 
     ### Multiprocessing
     else:
         print 'Pickling FHD heads to: {}'.format(path_picks)
         pool = Pool(processes=len(scenarios))
-        res = pool.map(_ts_heads, zip(scenarios, [path_picks] * len(scenarios)))
+        res  = pool.map(_ts_heads, zip(scenarios, [path_picks] * len(scenarios)))
 
         print 'Pickling SWMM Heads to {} ... '.format(path_picks)
         pool = Pool(processes=len(scenarios))
-        res = pool.map(_sub_var, zip(scenarios, ['heads']*len(scenarios),
-                               [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
+        res  = pool.map(_sub_var, zip(scenarios, ['heads']*len(scenarios),
+                     [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
 
         print 'Pickling SWMM Runoff to {} ... '.format(path_picks)
         pool = Pool(processes=len(scenarios))
-        res = pool.map(_sub_var, zip(scenarios, ['run']*len(scenarios),
-                               [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
+        res  = pool.map(_sub_var, zip(scenarios, ['run']*len(scenarios),
+                  [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
+
+        print 'Pickling SWMM Infil to {} ... '.format(path_picks)
+        pool = Pool(processes=len(scenarios))
+        res  = pool.map(_sub_var, zip(scenarios, ['inf']*len(scenarios),
+                 [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
+
+        print 'Pickling SWMM Evap to {} ... '.format(path_picks)
+        pool = Pool(processes=len(scenarios))
+        res  = pool.map(_sub_var, zip(scenarios, ['evap']*len(scenarios),
+                   [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
+
 
         PickleFmt.main(PATH_result);
         end = time.time()

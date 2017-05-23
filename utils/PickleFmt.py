@@ -40,15 +40,18 @@ class fmt_base(object):
 
     def make_swmm_grid(self, kind):
         """
-        Reshape SWMM subcatchments into full grid (Hrs x 74 x 51
+        Reshape SWMM subcatchments into full grid (Hrs x 74 x 51)
         'heads' or 'run'; Save to Pickle Dir
         """
         f_name = 'swmm_{}_grid_{}.npy'.format(kind, self.slr[0])
         if op.exists(op.join(self.path_picks, f_name)):
             print '{} exists, not making swmm grids...'.format(f_name)
             return
+
         for i, slr in enumerate(self.slr):
             f_name_old = 'swmm_{}_{}.npy'.format(kind, slr)
+            if not op.isfile(op.join(self.path_picks, f_name_old)):
+                raise ValueError('{} wasnt pickled from .out files. Use PickleRaw.py'.format(kind))
             mat_heads  = np.load(op.join(self.path_picks, f_name_old))
             mat_res    = np.zeros([mat_heads.shape[0], 74, 51])
 
@@ -230,5 +233,6 @@ def main(path_result):
     print ('Pickled Runoff Results')
 
 if __name__ == '__main__':
-    PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-21')
+    # PATH_result = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-21')
     main(PATH_result)
+    # fmt_base(PATH_result).make_swmm_grid('evap')
