@@ -20,8 +20,7 @@ class fmt_base(object):
                                                           index_col='Zone')
         _               = self.make_scenarios_slr()
         __              = self.make_ts()
-        ___             = self.make_swmm_grid('heads'), self.make_swmm_grid('run')
-        # self.seasons    = ['Winter', 'Spring', 'Summer', 'Fall']
+        ___             = self.make_swmm_grids()
 
     def make_scenarios_slr(self):
         """ Get Scenarios and SLR from Dirs """
@@ -38,30 +37,31 @@ class fmt_base(object):
         self.ts_hr  = pd.date_range(st_end[0], st_end[1], freq='H')
         self.ts_day = pd.date_range(st_end[0], st_end[1], freq='D')
 
-    def make_swmm_grid(self, kind):
+    def make_swmm_grids(self):
         """
         Reshape SWMM subcatchments into full grid (Hrs x 74 x 51)
         'heads' or 'run'; Save to Pickle Dir
         """
-        f_name = 'swmm_{}_grid_{}.npy'.format(kind, self.slr[0])
-        if op.exists(op.join(self.path_picks, f_name)):
-            print '{} exists, not making swmm grids...'.format(f_name)
-            return
+        kind  = ['heads', 'run', 'evap', 'inf']
+        for var in kind:
+            for i, slr in enumerate(self.slr):
+                f_name_old = 'swmm_{}_{}.npy'.format(var, slr)
+                f_name_new = 'swmm_{}_grid_{}.npy'.format(var, slr)
+                if op.exists(op.join(self.path_picks, f_name_new)):
+                    print '{} exists, not making swmm grid'.format(f_name_new)
+                elif not op.isfile(op.join(self.path_picks, f_name_old)):
+                    raise ValueError('{} wasnt pickled from .out files.\
+                                           Use PickleRaw.py'.format(var))
+                else:
+                    mat_heads  = np.load(op.join(self.path_picks, f_name_old))
+                    mat_res    = np.zeros([mat_heads.shape[0], 74, 51])
 
-        for i, slr in enumerate(self.slr):
-            f_name_old = 'swmm_{}_{}.npy'.format(kind, slr)
-            if not op.isfile(op.join(self.path_picks, f_name_old)):
-                raise ValueError('{} wasnt pickled from .out files. Use PickleRaw.py'.format(kind))
-            mat_heads  = np.load(op.join(self.path_picks, f_name_old))
-            mat_res    = np.zeros([mat_heads.shape[0], 74, 51])
-
-            # iterate over times
-            for t in range(mat_heads.shape[0]):
-                mat_tmp    = (np.concatenate([mat_heads[t], self.df_swmm.index])
-                                                            .reshape(2, -1))
-                mat_res[t] = self.fill_grid(mat_tmp)
-            f_name_new = 'swmm_{}_grid_{}.npy'.format(kind, slr)
-            np.save(op.join(self.path_picks, f_name_new), mat_res)
+                    # iterate over times
+                    for t in range(mat_heads.shape[0]):
+                        mat_tmp    = (np.concatenate([mat_heads[t],
+                                            self.df_swmm.index]).reshape(2, -1))
+                        mat_res[t] = self.fill_grid(mat_tmp)
+                    np.save(op.join(self.path_picks, f_name_new), mat_res)
 
     @staticmethod
     def fill_grid(ser):
@@ -142,7 +142,7 @@ class fmt_dtw(fmt_base):
 
     def _make_mat_dtw(self, slr):
         """ Make Matrix of Elevations - Heads (DTW) (ts x 74 x 51) """
-        mat_surf     = self.fill_grid(self.df_swmm.Esurf)
+        mat_surf  = self.fill_grid(self.df_swmm.Esurf)
 
         f_name    = 'swmm_heads_grid_{}.npy'.format(slr)
         mat_heads = np.load(op.join(self.path_picks, f_name))

@@ -39,8 +39,10 @@ class Sensitivity(res_base):
         axes.set_xticks([float(slr) for slr in self.slr])
         axes.xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
         axes.yaxis.grid(True)
+        fig.set_label('{}_sensitivity'.format(var))
 
         df_all = pd.DataFrame(arr_all, index=self.slr, columns=ids)
+
         print df_all.head()
         return df_all
 
@@ -48,15 +50,16 @@ class Sensitivity(res_base):
         """ Get Paths to all Result Directories """
         path_parent   = op.dirname(self.path)
         path_pickdirs = [op.join(path_parent, resdir, 'Pickles') for resdir in
-                       os.listdir(path_parent) if resdir.startswith('Results_')]
+                       os.listdir(path_parent) if resdir.startswith('Results_')]#05-2')]
         return path_pickdirs
-
-
 
 
 # could be a self contained object, but need slr and save stuff
 
 PATH_res       = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-21')
 sensitivityObj = Sensitivity(PATH_res)
-sensitivityObj.totals()
-plt.show()
+# sensitivityObj.totals('inf')
+# sensitivityObj.totals('evap')
+sensitivityObj.totals('run')
+savefigs(PATH_res)
+# plt.show()

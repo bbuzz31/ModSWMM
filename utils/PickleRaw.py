@@ -214,7 +214,7 @@ if __name__ == '__main__':
     start       = time.time()
     arguments   = docopt(__doc__)
     typecheck   = Schema({'PATH'  : os.path.exists, '--fmt' : Use(int),
-                          '--var' : Or(Use(int), str)}, ignore_extra_keys=True)
+                          '--var' : Or(Use(int), str)})#, ignore_extra_keys=True)
     PATH_result = op.abspath(typecheck.validate(arguments)['PATH'])
     args = typecheck.validate(arguments)
 
@@ -224,6 +224,7 @@ if __name__ == '__main__':
     ts_hr                 = swmm_obj.ts_hr
 
     if args['--fmt']:
+        print ('Formatting Pickles')
         PickleFmt.main(PATH_result);
 
     elif args['--var']:

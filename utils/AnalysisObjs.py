@@ -741,6 +741,17 @@ def set_rc_params():
         # print param
         pass
 
+def savefigs(path):
+    path_fig = op.join(path, 'Figures')
+    if not op.isdir(path_fig):
+        os.makedirs(path_fig)
+    figs = list(map(plt.figure, plt.get_fignums()))
+    for fig in figs:
+        mpl.rcParams['figure.figsize']   = (18, 12) # figure out a way to make this work
+        print op.join(path_fig, fig.get_label())
+        fig.savefig(op.join(path_fig, fig.get_label()), dpi=300)
+    print 'Fig(s) Saved'
+
 set_rc_params()
 
 # print 186 + 137 + 311 # 0.0
