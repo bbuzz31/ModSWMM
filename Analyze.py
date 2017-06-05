@@ -10,9 +10,9 @@ from utils.AnalysisObjs import *
 
 def run_summary():
     summary_obj = summary(PATH_res)
-    # summary_obj.plot_ts_uzf_sums()
+    summary_obj.plot_ts_uzf_sums()
     # summary_obj.plot_hypsometry()
-    summary_obj.plot_hist_head()
+    # summary_obj.plot_hist_head()
     # summary_obj.plot_land_z()     # not used
     # summary_obj.shp_heads()
 
@@ -26,17 +26,17 @@ def run_dtw():
 
 def run_runoff():
     runobj_obj = runoff(PATH_res)
-    runobj_obj.plot_ts_total()
-    runobj_obj.plot_area_vol()
+    # runobj_obj.plot_ts_total()
+    # runobj_obj.plot_area_vol()
     # runobj_obj.shp_chg()
 
 def run_sensitivity():
     sensitivity_obj = sensitivity(PATH_res)
     sensitivity_obj.total_et()
 
-PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-21')
-# run_summary()
-# run_dtw()
-# run_runoff()
+PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-26')
+run_summary()
+run_dtw()
+run_runoff()
 # savefigs(PATH_res)
 plt.show()

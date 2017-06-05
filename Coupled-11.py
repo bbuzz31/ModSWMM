@@ -61,7 +61,7 @@ class InitSim(object):
     Run MF SS
     Create SWMM Input File
     """
-    def __init__(self, slr, days, ext='_1'):
+    def __init__(self, slr, days, ext=''):
         self.slr        = slr
         self.days       = days
         self.verbose    = 4
@@ -72,7 +72,7 @@ class InitSim(object):
         self.path_child = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled',
                                 time.strftime('%b')+ext, 'Child_{}'.format(slr))
         self.path_data  = op.join(self.path_child, 'Data')
-        self.path_res   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-25')
+        self.path_res   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_06-05')
         self.start      = time.time()
 
     def mf_params(self):
@@ -110,7 +110,7 @@ class InitSim(object):
                ('Seep', 0), ('Ebot' ,  0), ('Egw', 0),
                ### GROUNDWATER
                ('Node', 13326),
-               ('a1' , 0.00001), ('b1', 0), ('a2', 0), ('b2', 0), ('a3', 0),
+               ('a1' , 0.00002), ('b1', 0), ('a2', 0), ('b2', 0), ('a3', 0),
                ('Dsw', 0), ('Ebot', 0),
                ### JUNCTIONS
                # note elevation and maxdepth maybe updated and overwrittten
@@ -402,7 +402,7 @@ if __name__ == '__main__':
         ARGS = zip(SLR, [args['KPERS']]*len(SLR))
         pool = Pool(processes=len(SLR))
         pool.map(main, ARGS)
-        call(['PickleRaw.py', '/Volumes/BB_4TB/Thesis/Results_05-25'])
+        call(['PickleRaw.py', '/Volumes/BB_4TB/Thesis/Results_06-05'])
 
     else:
         # run MF SS and create SWMM .INP

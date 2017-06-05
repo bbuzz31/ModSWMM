@@ -334,13 +334,10 @@ if __name__ == '__main__':
     PATH      = op.abspath(args['PATH'])
     slr_name  = 'SLR-{}_{}'.format(args['--slr'], time.strftime('%m-%d'))
 
-    params    = {'name'    : slr_name,            'days' : args['KPERS'],
-                 'coupled' : args['--coupled'],   'ss'   : args['--steady'],
-<<<<<<< HEAD
+    params    = {'name'    : slr_name,          'days' : args['KPERS'],
+                 'coupled' : args['--coupled'], 'ss'   : args['--steady'],
                  'slr'     : args['--slr'],     'noleak' : 0,
-=======
                  'slr'     : args['--slr'],     'noleak' : True,
->>>>>>> Add_Leak
                  'Verbose': args['--verbose']}
 
     if args['--steady']:

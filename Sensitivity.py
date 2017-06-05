@@ -3,7 +3,7 @@ from utils.AnalysisObjs import *
 class Sensitivity(res_base):
     def __init__(self, path_res):
         super(Sensitivity, self).__init__(path_res)
-        self.path_all_picks = self._get_all_res()[0:-1]
+        self.path_pick_dirs = self._get_all_res()
 
     def totals(self, var='run'):
         """ Total Runoff for Whole Year """
@@ -14,15 +14,14 @@ class Sensitivity(res_base):
         # will have to set up some conversions
         var_map   = {'run' : 'Runoff Rate (CMS)',
                      'inf' : 'Infiltration Rate (M/D)',
-                      'et' : 'Volume (CM)'}
+                    'evap' : 'Evaporation Volume (CM)'}
 
         ids       = ['Default', 'U1H', 'U1L']
         arr_all   = np.ones([len(self.slr_sh), len(ids)])
 
         fig, axes = plt.subplots()
         markers   = ['D', 's', '*']
-
-        for i, resdir in enumerate(self.path_all_picks):
+        for i, resdir in enumerate(self.path_pick_dirs):
             dict_var = self._load_swmm(var, path=resdir)
             y = [] # store sums and plot i times only; make legends better
             # use slr to maintain order
@@ -43,23 +42,23 @@ class Sensitivity(res_base):
 
         df_all = pd.DataFrame(arr_all, index=self.slr, columns=ids)
 
-        print df_all.head()
+        # print df_all.head()
         return df_all
 
     def _get_all_res(self):
         """ Get Paths to all Result Directories """
         path_parent   = op.dirname(self.path)
         path_pickdirs = [op.join(path_parent, resdir, 'Pickles') for resdir in
-                       os.listdir(path_parent) if resdir.startswith('Results_')]#05-2')]
+                       os.listdir(path_parent) if resdir.startswith('Results_')]
         return path_pickdirs
 
 
 # could be a self contained object, but need slr and save stuff
 
-PATH_res       = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-21')
+PATH_res       = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-25')
 sensitivityObj = Sensitivity(PATH_res)
-# sensitivityObj.totals('inf')
-# sensitivityObj.totals('evap')
+sensitivityObj.totals('inf')
+sensitivityObj.totals('evap')
 sensitivityObj.totals('run')
 savefigs(PATH_res)
-# plt.show()
+plt.show()

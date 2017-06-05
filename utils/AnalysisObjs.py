@@ -563,9 +563,12 @@ class runoff(res_base):
 
 class dtw(res_base):
     def __init__(self, path_result):
-        super(dtw, self).__init__(path_result)
+        res_base.__init__(self, path_result)
+        # super(dtw, self).__init__(path_result)
+
         # pickle converted this to a year
         self.df_year  = pd.read_pickle(op.join(self.path_picks, 'dtw_yr.df'))
+        # print self.df_year.head()
         self.df_area  = pd.read_pickle(op.join(self.path_picks, 'percent_at_surface.df'))#.loc['2011-12-01-00':, :]
         self.dtws     = BB.uniq([float(dtw.split('_')[1]) for dtw in self.df_area.columns])
 
@@ -588,8 +591,6 @@ class dtw(res_base):
             axe[i].legend(loc='lower left', frameon=True, shadow=True, facecolor='white')
             axe[i].set_ylim((0, len(df_area_one)*1.10))
             axe[i].yaxis.grid(True)
-            BB.print_all(df_hrs)
-            return
         fig.subplots_adjust(left=0.125, right=0.92, wspace=0.175, hspace=0.35)
         fig.set_label('dtw_area')
         return df_hrs
@@ -753,10 +754,3 @@ def savefigs(path):
     print 'Fig(s) Saved'
 
 set_rc_params()
-
-# print 186 + 137 + 311 # 0.0
-# print 211 + 119 + 280 # 1.0
-# print 223 + 111 + 269 # 2.0
-#
-# print 277 + 542
-# print 228 + 326 + 337
