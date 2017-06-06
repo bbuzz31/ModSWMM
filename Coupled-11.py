@@ -198,7 +198,6 @@ class RunSim(object):
 
         time.sleep(1) # simply to let modflow finish printing to screen first
         STEPS_mf  = self.init.days+1
-        path_root = self.init.path_child
         v         = self.init.swmm_parms.get('Verbose', 4)
         slr_name  = self.init.slr_name
 
@@ -226,15 +225,15 @@ class RunSim(object):
             ### overwrite new MF arrays
             finf      = for_mf[:,0].reshape(self.nrows, self.ncols)
             pet       = for_mf[:,1].reshape(self.nrows, self.ncols)
-            ext_dir   = op.join(self.init.path_child, 'MF', 'ext')
-            bcpl.write_array(ext_dir, 'finf_', STEP_mf+1, finf)
-            bcpl.write_array(ext_dir, 'pet_' , STEP_mf+1, pet)
+            bcpl.StepDone(self.init.path_child, STEP_mf+1).mf_set(finf, 'finf')
+            bcpl.StepDone(self.init.path_child, STEP_mf+1).mf_set(pet, 'pet')
             self._debug('for_mf', STEP_mf, v, path_root=self.init.path_child)
-            bcpl.swmm_is_done(path_root, STEP_mf)
+            bcpl.StepDone(self.init.path_child, STEP_mf, v).swmm_is_done()
+            # bcpl.swmm_is_done(self.init.path_child, STEP_mf)
 
             ### MF step is runnning
             self._debug('mf_run', STEP_mf, v)
-            bcpl.mf_is_done(self.init.path_child, STEP_mf, v=v)
+            bcpl.StepDone(self.init.path_child, STEP_mf, v).mf_is_done()
             self._debug('for_swmm', STEP_mf, v)
 
             ### get SWMM values for new step from uzfb and fhd
@@ -242,10 +241,7 @@ class RunSim(object):
             self._debug('set_swmm', STEP_mf, v)
 
             # set MF values to SWMM
-            bcpl.swmm_set_all(mf_step_all)
-            # wait = True
-            # while wait:
-                # time.sleep(10)
+            bcpl.StepDone().swmm_set(mf_step_all)
 
         errors = swmm.finish()
         self._debug('swmm_done', STEP_mf, True, errors)
@@ -415,7 +411,7 @@ if __name__ == '__main__':
         pool.map(main, ARGS)
         res_path = op.join('/', 'Volumes', 'BB_4TB', 'Thesis',
                                         'Results_{}').format(args['PARM'])
-        call(['PickleRaw.py', res_path])
+        # call(['PickleRaw.py', res_path])
 
     else:
         # run MF SS and create SWMM .INP
