@@ -365,7 +365,8 @@ class FinishSim(object):
             shutil.copy (log, op.join(dest_dir, op.basename(log)))
 
         ### REMOVE DIR
-        shutil.rmtree(self.init.path_parent, ignore_errors=True)
+        shutil.rmtree(self.init.path_child) # to remove parent do outside main
+        
         print 'Results moved to {}\n'.format(dest_dir)
 
     def pickles(self):
@@ -412,9 +413,7 @@ if __name__ == '__main__':
         pool.map(main, ARGS)
         res_path = op.join('/', 'Volumes', 'BB_4TB', 'Thesis',
                                         'Results_{}').format(args['PARM'])
-        print res_path
-        print os.path.exists(res_path)
-        # call(['PickleRaw.py', res_path])
+        call(['PickleRaw.py', res_path])
 
     else:
         # run MF SS and create SWMM .INP
