@@ -3,15 +3,16 @@
 Run SWMM and MODFLOW2005 sequentially
 
 Usage:
-  Coupled-11.py KPERS [options]
+  Coupled-11.py KPERS PARM [options]
 
 Examples:
   Change **params dictionary within script.
   Run a year coupled simulation
-  ./Coupled-11.py 550
+  ./Coupled-11.py 550 Default
 
 Arguments:
   kpers       Total number of MODFLOW Steps / SWMM Days
+  parm       Directory Name. Should be parameter altered.
 
 Options:
   -c, --coupled=BOOL  Run a Coupled Simulation | SWMM input file    [default: 1]
@@ -61,19 +62,21 @@ class InitSim(object):
     Run MF SS
     Create SWMM Input File
     """
-    def __init__(self, slr, days, ext=''):
-        self.slr        = slr
-        self.days       = days
-        self.verbose    = 4
-        self.coupled    = True
-        self.slr_name   = 'SLR-{}_{}'.format(self.slr, time.strftime('%m-%d'))
-        self.mf_parms   = self.mf_params()
-        self.swmm_parms = self.swmm_params()
-        self.path_child = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled',
-                                time.strftime('%b')+ext, 'Child_{}'.format(slr))
-        self.path_data  = op.join(self.path_child, 'Data')
-        self.path_res   = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_06-05')
-        self.start      = time.time()
+    def __init__(self, slr, days, parm_name):
+        self.slr         = slr
+        self.days        = days
+        self.verbose     = 4
+        self.coupled     = True
+        self.slr_name    = 'SLR-{}_{}'.format(self.slr, time.strftime('%m-%d'))
+        self.mf_parms    = self.mf_params()
+        self.swmm_parms  = self.swmm_params()
+        self.path_parent = op.join(op.expanduser('~'), 'Google_Drive', 'WNC', parm_name)
+        self.path_child  = op.join(self.path_parent, 'Child_{}'.format(self.slr))
+                                # time.strftime('%b')+ext, 'Child_{}'.format(slr))
+        self.path_data   = op.join(op.dirname(self.path_parent), 'Data')
+        self.path_res    = op.join('/', 'Volumes', 'BB_4TB', 'Thesis',
+                                                'Results_{}'.format(parm_name))
+        self.start       = time.time()
 
     def mf_params(self):
         MF_params  = OrderedDict([
@@ -138,23 +141,32 @@ class InitSim(object):
     def init(self):
         """ Remove old control files / create SWMM input file """
         self._fmt_dir(uzfb=False)
-        #
         wncNWT.main_SS(self.path_child, **self.mf_parms)
         wncSWMM.main(self.path_child, **self.swmm_parms)
 
     def _fmt_dir(self, uzfb):
         """ Prepare Directory Structure """
-        if not op.isdir(self.path_child):
+        # need to use try; can't check os.isdir while multiprocessing
+        try:
+            os.makedirs(self.path_parent)
+        except:
+            pass
+
+        if op.isdir(self.path_child):
+            raise SystemError('Child Exists; Change Parent Directory Name')
+        else:
             os.makedirs(self.path_child)
+
         if not op.isdir(op.join(self.path_child, 'MF')):
             os.makedirs(op.join(self.path_child, 'MF'))
         if not op.isdir(op.join(self.path_child, 'SWMM')):
             os.makedirs(op.join(self.path_child, 'SWMM'))
-        if not op.isdir(self.path_data):
-            data_dir = op.join(op.split(op.split(self.path_child)[0])[0], 'Data')
-            os.symlink(data_dir, self.path_data)
+        # if not op.isdir(self.path_data):
 
-        ### Remove files that control flow / uzf gage files """
+            # data_dir = op.join(op.dirname(op.dirname(self.path_child)[0])[0], 'Data')
+            # os.symlink(data_dir, self.path_data)
+
+        ## Remove files that control flow / uzf gage files """
         remove_start=['swmm', 'mf']
         regex = re.compile('({}.uzf[0-9]+)'.format(self.slr_name[-5:]))
         [os.remove(op.join(self.path_child,f)) for f in os.listdir(self.path_child)
@@ -339,12 +351,7 @@ class FinishSim(object):
 
         [shutil.copy(mf_file, op.join(dest_dir, op.basename(mf_file))) for
                                                 mf_file in cur_files]
-        try:
-            shutil.copytree(ext_dir, op.join(dest_dir, 'ext'))
-            [os.remove(mf_file) for mf_file in cur_files]
-            shutil.rmtree(ext_dir)
-        except:
-            print 'ext directory not copied or removed'
+        shutil.copytree(ext_dir, op.join(dest_dir, 'ext'))
 
         ### SWMM
         swmm_dir  = op.join(self.init.path_child, 'SWMM')
@@ -352,13 +359,13 @@ class FinishSim(object):
                            os.listdir(swmm_dir) if self.init.slr_name in swmm_file]
         [shutil.copy(swmm_file, op.join(dest_dir, op.basename(swmm_file)))
                                                   for swmm_file in cur_files]
-        [os.remove(cur_file) for cur_file in cur_files]
-
         ### LOG
         log       = op.join(self.init.path_child, 'Coupled_{}.log'.format(self.date))
         if op.exists(log):
             shutil.copy (log, op.join(dest_dir, op.basename(log)))
-            os.remove(log)
+
+        ### REMOVE DIR
+        shutil.rmtree(self.init.path_parent, ignore_errors=True)
         print 'Results moved to {}\n'.format(dest_dir)
 
     def pickles(self):
@@ -372,8 +379,8 @@ class FinishSim(object):
 
 def main(args):
     """ Run MODSWMM """
-    slr, days = args
-    InitObj   = InitSim(slr, days)
+    slr, days, parm = args
+    InitObj   = InitSim(slr, days, parm)
     # run SS and create SWMM .inp
     InitObj.init()
     # start transient MF and SWMM sol
@@ -385,25 +392,30 @@ def main(args):
 
 if __name__ == '__main__':
     arguments = docopt(__doc__)
-    typecheck = Schema({'KPERS'   : Use(int),  '--coupled' : Use(int),
-                        '--dev' : Use(int)}, ignore_extra_keys=True)
+    typecheck = Schema({'KPERS'     : Use(int), 'PARM'  : Use(str),
+                        '--coupled' : Use(int), '--dev' : Use(int)},
+                        ignore_extra_keys=True)
     # this is the test
     args = typecheck.validate(arguments)
     SLR = [0.0, 1.0, 2.0]
 
     if args['--dev']:
         # short, 0.0 only simulation
-        InitObj = InitSim(SLR[0], args['KPERS'], ext='_DEV')
+        InitObj = InitSim(SLR[0], args['KPERS'], parm_name='DEV')
         InitObj.init()
         RunSim(InitObj).run_coupled()
 
     elif args['--coupled']:
         # zip up args into lists for pool workers
-        ARGS = zip(SLR, [args['KPERS']]*len(SLR))
+        ARGS = zip(SLR, [args['KPERS']]*len(SLR), [args['PARM']]*len(SLR))
         pool = Pool(processes=len(SLR))
         pool.map(main, ARGS)
-        call(['PickleRaw.py', '/Volumes/BB_4TB/Thesis/Results_06-05'])
+        res_path = op.join('/', 'Volumes', 'BB_4TB', 'Thesis',
+                                        'Results_{}').format(args['PARM'])
+        print res_path
+        print os.path.exists(res_path)
+        # call(['PickleRaw.py', res_path])
 
     else:
         # run MF SS and create SWMM .INP
-        InitSim(SLR[0], args['KPERS'], ext='_SS').init()
+        InitSim(SLR[0], args['KPERS'], parm_name='_SS').init()

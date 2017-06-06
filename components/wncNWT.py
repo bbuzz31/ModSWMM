@@ -42,10 +42,10 @@ from docopt import docopt
 from schema import Schema, Use, Or
 
 class WNC_Base(object):
-    def __init__(self, path_root, **params):
+    def __init__(self, path_child, **params):
         """ Initialize with path_root where 'MF' directory will be made """
-        self.path      = path_root
-        self.path_data = op.join(path_root, 'Data')
+        self.path      = path_child
+        self.path_data = op.join(op.dirname(op.dirname(path_child)), 'Data')
         self.params    = params
         self.kpers     = self.params.get('days', 5)
         _              = self.load_data()

@@ -92,7 +92,7 @@ def mf_get_all(path_root, mf_step, **params):
     head_fhd      = hds.get_data(totim=mf_step+1, mflay=0)
     uzf_data      = abs(uzf.get_data(text='SURFACE LEAKAGE', totim=mf_step+1)[0])
 
-    arr_surf      = np.load(os.path.join(path_root, 'Data', 'Land_Z.npy')).reshape(head_fhd.shape)
+    arr_surf      = np.load(os.path.join(op.dirname(op.dirname(path_root)), 'Data', 'Land_Z.npy')).reshape(head_fhd.shape)
     # intialize numpy arrays that will get updated based on row/col location
     index         = np.linspace(10001, 10000 + head_fhd.size, head_fhd.size, dtype=int)
     theta_uzfb    = np.empty(head_fhd.shape)

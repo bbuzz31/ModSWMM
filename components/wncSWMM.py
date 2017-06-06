@@ -11,9 +11,9 @@ from swmmPUT import *
 import bcpl
 
 class WNC_Base(object):
-    def __init__(self, path_root, **params):
-        self.path      = path_root
-        self.path_data = op.join(self.path, 'Data')
+    def __init__(self, path_child, **params):
+        self.path      = path_child
+        self.path_data = op.join(op.dirname(op.dirname(self.path)), 'Data')
         self.params    = params
         _              = self.swmm_load()
         __             = self.mf_load()
