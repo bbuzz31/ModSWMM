@@ -29,6 +29,7 @@ Notes:
   Directory with csv files  must be at <path>/Data. Can be symlink.
   Data is prepared in dataprep.py
 """
+from __future__ import print_function
 import os
 import os.path as op
 import time
@@ -98,14 +99,14 @@ class WNC_Base(object):
             ### silent doesn't work; i think flopy problem
             success, buff = self.mf.run_model(silent=True)
             if success and quiet:
-                print '\n  ************************', \
-                      '\n  MODFLOW (flopy) is done.'
+                print ('\n  ************************',
+                      '\n  MODFLOW (flopy) is done.')
                 if self.kpers ==  2:
-                    print '  Creating new SWMM .inp from MF SS gages'
+                    print ('  Creating new SWMM .inp from MF SS gages')
                 elif self.kpers >  2 and not self.params.get('ss'):
                     trans = [step for step in self.steady if step is False]
-                    print '  Ran', str(len(trans)), 'transient steps.'
-                print '  ************************'
+                    print ('  Ran', str(len(trans)), 'transient steps.')
+                print ('  ************************')
             return success
 
     def _chd_format(self, chd, layers=[0]):

@@ -34,7 +34,7 @@ Notes:
   Author : Brett Buzzanga
 
 """
-
+from __future__ import print_function
 from components import wncNWT, wncSWMM, bcpl, swmmSOL as swmm
 from utils import PickleRaw, PickleFmt
 
@@ -134,7 +134,8 @@ class InitSim(object):
 
         start_date  = datetime.strptime(self.mf_parms['START_DATE'], '%m/%d/%Y')
         SWMM_params['END_DATE'] = datetime.strftime(start_date + timedelta(
-                                             days=self.days+1), '%m/%d/%Y')
+                                    days=SWMM_params['days']+1), '%m/%d/%Y')
+
 
         return SWMM_params
 
@@ -161,10 +162,9 @@ class InitSim(object):
             os.makedirs(op.join(self.path_child, 'MF'))
         if not op.isdir(op.join(self.path_child, 'SWMM')):
             os.makedirs(op.join(self.path_child, 'SWMM'))
-        # if not op.isdir(self.path_data):
-
-            # data_dir = op.join(op.dirname(op.dirname(self.path_child)[0])[0], 'Data')
-            # os.symlink(data_dir, self.path_data)
+        if not op.isdir(self.path_data):
+            data_dir = op.join(op.dirname(op.dirname(self.path_child)[0])[0], 'Data')
+            os.symlink(data_dir, self.path_data)
 
         ## Remove files that control flow / uzf gage files """
         remove_start=['swmm', 'mf']
@@ -181,12 +181,12 @@ class InitSim(object):
 class RunSim(object):
     """ Run Coupled MODSWMM Simulation """
     def __init__(self, initobj):
-        self.init       = initobj
-        self.df_subs    = pd.read_csv(op.join(self.init.path_data, 'SWMM_subs.csv'),
+        self.init      = initobj
+        self.df_subs   = pd.read_csv(op.join(self.init.path_data, 'SWMM_subs.csv'),
                                                              index_col='Zone')
-        self.nrows      = int(max(self.df_subs.ROW))
-        self.ncols      = int(max(self.df_subs.COLUMN))
-        self.gridsize    = self.nrows * self.ncols
+        self.nrows     = int(max(self.df_subs.ROW))
+        self.ncols     = int(max(self.df_subs.COLUMN))
+        self.gridsize  = self.nrows * self.ncols
 
         os.chdir(self.init.path_child) # find start/stop files?
 
@@ -210,17 +210,18 @@ class RunSim(object):
         for STEP_mf in range(1, self.init.days+1):
             last_step = True if STEP_mf == (STEPS_mf - 1) else False
 
+            ### run and pull from swmm
             if not last_step:
                 self._debug('new', STEP_mf, v)
                 self._debug('from_swmm', STEP_mf, v)
+                self._debug('swmm_run', STEP_mf, v)
+                for_mf  = bcpl.swmm_get_all(sub_ids, self.gridsize)
+
             else:
                 self._debug('last', STEP_mf, v)
+                print ('  Writing SWMM .rpt ')
+                break
 
-            ### run and pull from swmm
-            self._debug('swmm_run', STEP_mf, v)
-            for_mf       = bcpl.swmm_get_all(sub_ids, last_step, self.gridsize)
-
-            if last_step == True:    break
             ### overwrite new MF arrays
             finf      = for_mf[:,0].reshape(self.nrows, self.ncols)
             pet       = for_mf[:,1].reshape(self.nrows, self.ncols)
@@ -255,41 +256,49 @@ class RunSim(object):
         Verb_level 2 == to Coupled_today.log
         Verb_level 3 == to console and log
         Verb_level 4 == to console, make sure still working
-        Errs = final SWMM Errors.
+        Errs         = final SWMM Errors.
         """
         message=[]
         if not isinstance(steps, list):
             steps=[steps]
         if 'new' in steps:
-            message.extend(['','  *************', '  NEW DAY: {}'.format(tstep), '  *************',''])
+            message.extend(['','  *************', '  NEW DAY: {}'.format(tstep),
+                               '  *************',''])
         if 'last' in steps:
-            message.extend(['','  #############', '  LAST DAY: {}'.format(tstep), '  #############', ''])
-        if 'from_swmm' in steps:
-            message.extend(['Pulling Applied INF and GW ET', 'From SWMM: {} For MF-Trans: {}'.format(tstep,tstep), '             .....'])
+            message.extend(['','  #############', '  LAST DAY: {}'.format(tstep),
+                               '  #############', ''])
         if 'for_mf' in steps:
-            message.extend(['FINF & PET {} arrays written to: {}'.format(tstep+1, op.join(path_root, 'mf', 'ext'))])
+            message.extend(['FINF & PET {} arrays written to: {}'.format(tstep+1,
+                                              op.join(path_root, 'mf', 'ext'))])
         if 'mf_run' in steps:
-            message.extend(['', 'Waiting for MODFLOW Day {} (Trans: {})'.format(tstep+1, tstep)])
+            message.extend(['', 'Waiting for MODFLOW Day {} (Trans: {})'.format(
+                                                                tstep+1, tstep)])
         if 'mf_done' in steps:
-            message.extend(['---MF has finished.---', '---Calculating final SWMM steps.---'])
+            message.extend(['---MF has finished.---',
+                                        '---Calculating final SWMM steps.---'])
+        if 'from_swmm' in steps:
+            message.extend(['Pulling Applied INF and GW ET',
+                            'From SWMM: {} For MF-Trans: {}'.format(tstep,tstep),
+                            '             .....'])
         if 'for_swmm' in steps:
             message.extend(['Pulling head & soil from MF Trans: {} for SWMM day: {}'.format(tstep, tstep+1)])
         if 'set_swmm' in steps:
             message.extend(['', 'Setting SWMM values for new SWMM day: {}'.format(tstep + 1)])
-        if 'swmm_done' in steps:
-            message.extend(['', '  *** SIMULATION HAS FINISHED ***','  Runoff Error: {}'.format(errs[0]), '  Flow Routing Error: {}'.format(errs[1]), '  **************************************'])
         if 'swmm_run' in steps:
-            message.extend(['', 'Waiting for SWMM Day: {}'.format(tstep+1)])
+            message.extend(['', 'Waiting for SWMM Day: {}'.format(tstep)])
+        if 'swmm_done' in steps:
+            message.extend(['', '  *** SIMULATION HAS FINISHED ***','  Runoff Error: {}'.format(errs[0]),
+                                '  Flow Routing Error: {}'.format(errs[1]),
+                                '  **************************************'])
 
         if verb_level == 1 or verb_level == 3:
-            print '\n'.join(message)
+            print ('\n'.join(message))
         if verb_level == 2 or verb_level == 3:
             with open(op.join(self.init.path_child, 'Coupled_{}.log'.format(
-                        time.strftime('%m-%d'))), 'a') as fh:
+                        op.basename(self.init.path_parent))), 'a') as fh:
                         [fh.write('{}\n'.format(line)) for line in message]
-
         if verb_level == 4 and 'swmm_run' in steps or 'mf_run' in steps:
-            print '\n'.join(message)
+            print ('\n'.join(message))
 
         return message
 
@@ -363,13 +372,13 @@ class FinishSim(object):
         ### REMOVE DIR
         shutil.rmtree(self.init.path_child) # to remove parent do outside main
 
-        print 'Results moved to {}\n'.format(dest_dir)
+        print ('Results moved to {}\n'.format(dest_dir))
 
     def pickles(self, cap=False):
         call(['PickleRaw.py', self.path_res]) # DONT use rel path (os.getcwd())
 
         if cap:
-            print '\nBacking up to Time Capsule ...\n'
+            print ('\nBacking up to Time Capsule ...\n')
             call(['TC_backup.py', self.path_res])
 
 def main(args):

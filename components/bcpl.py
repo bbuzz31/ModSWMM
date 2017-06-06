@@ -1,10 +1,8 @@
 """
-Functions necessary for running coupled MODFLOW/SWMM
+Class/Functions necessary for running coupled MODFLOW/SWMM
 Brett Buzzanga, 2017
 """
-
-import BB
-
+from __future__ import print_function
 import os
 import os.path as op
 import time
@@ -34,7 +32,7 @@ class StepDone(object):
 
         message = ['SWMM step done for next MODFLOW Trans: {}'.format(self.kper)]
         if self.v == 1 or self.v == 3:
-            print '\n'.join(message)
+            print ('\n'.join(message))
         if self.v >= 2:
             with open(op.join(self.path_child, 'Coupled_{}.log'.format(
                                     time.strftime('%m-%d'))), 'a') as fh:
@@ -50,9 +48,10 @@ class StepDone(object):
         while found == False:
             if op.isfile(mf_fail):
                 swmm.finish()
-                print '\n  #############################################', \
-                      '\n  MODFLOW {} FAILED to converge at Trans Day: {}'.format(os.path.basename(self.path_child), self.kper), \
-                      '\n  #############################################\n'
+                print ('\n  ##################################################',
+                      '\n  MODFLOW {} FAILED to converge at Trans Day: {}'.format(
+                                  os.path.basename(self.path_child), self.kper),
+                      '\n  ################################################## \n')
                 raise SystemExit('---Stopping SWMM---')
             elif op.isfile(mf_pass):
                 found = True
@@ -60,9 +59,9 @@ class StepDone(object):
                 time.sleep(delay)
         if self.v > 0 and self.v < 4:
             if self.kper > 0:
-                print '  MODFLOW Trans step', str(self.mf_pass),'done.\n'
+                print ('  MODFLOW Trans step', str(self.mf_pass),'done.\n')
             else:
-                print '  MODFLOW Steady State Done.\n'
+                print ('  MODFLOW Steady State Done.\n')
 
     def swmm_set(self, data4swmm):
         """
@@ -96,8 +95,6 @@ class StepDone(object):
         """
         ext_dir  = op.join(self.path_child, 'MF', 'ext')
         ext_file = op.join(ext_dir, '{}_{}.ref'.format(var, self.kper))
-        print self.kper
-        print ext_file
         fmt      = '%15.6E'
         with open(ext_file, 'w') as fh:
             np.savetxt(fh, data, fmt=fmt, delimiter='')
@@ -209,14 +206,13 @@ def mf_get_all(path_root, mf_step, **params):
 
     return mf_subs
 
-def swmm_get_all(cells, mf_done, gridsize):
+def swmm_get_all(cells, gridsize):
     """
     Purpose:
         Run SWMM get functions to obtain values for next MF step
             enables smaller time steps than modflow
     Args:
         cells: list of cells to pull (get from SWMM_subs_new.csv)
-        mf_done: boolean, skips 'gets' if MODFLOW has finished
         gridsize: length of modflow grid; for reshaping purposes
 
     Returns:
@@ -228,30 +224,25 @@ def swmm_get_all(cells, mf_done, gridsize):
     mat_swmm = np.zeros([gridsize, 2], dtype=np.float32)
     for timesteps in range(0,steps):
         if swmm.is_over():
-            print '\n   ### ERROR: SWMM has less steps than MF  ### \n'
+            print ('\n   ### ERROR: SWMM has less steps than MF  ### \n')
             break
 
         elapsed.append (swmm.get_time())
         swmm.run_step()
         # skip if MF is done
-        if not mf_done:
-            for cell in cells:
-                # convert to 0 index
-                pos = cell - 10000 - 1
-                ''' THIS IS CHANGED '''
-                mat_swmm[pos, 0]   += swmm.get(str(cell), swmm.INFIL, swmm.SI)
-                mat_swmm[pos, 1]   += swmm.get(str(cell), swmm.GW_ET, swmm.SI)
-            # set storage units to steady state rate
-            for unit in stors:
-                mat_swmm[unit-10001, 0]  += 0.0115983375
-                mat_swmm[unit-10001, 1]  += 0.0115983375
-        else:
-            print '  Writing SWMM .rpt '
-            return None
+        for cell in cells:
+            # convert to 0 index
+            pos = cell - 10000 - 1
+            ''' THIS IS CHANGED '''
+            mat_swmm[pos, 0]   += swmm.get(str(cell), swmm.INFIL, swmm.SI)
+            mat_swmm[pos, 1]   += swmm.get(str(cell), swmm.GW_ET, swmm.SI)
+        # set storage units to steady state rate
+        for unit in stors:
+            mat_swmm[unit-10001, 0]  += 0.0115983375
+            mat_swmm[unit-10001, 1]  += 0.0115983375
 
     # convert mm to m; hours to day accounted for by the summing CORRECT: 4/5/17
     mat_swmm *= 0.001
-    #print '    ### WARNING: storage units ET may be wrong ### \n'
     return mat_swmm
 
 def cell_num(row, col, n_cols=51, show=False):
@@ -267,5 +258,5 @@ def cell_num(row, col, n_cols=51, show=False):
     if row >= 2:
         cellnum = n_cols * (row-1) + col
     if show:
-        print '1D Loc = {}'.format(cellnum + 10000)
+        print ('1D Loc = {}'.format(cellnum + 10000))
     return cellnum
