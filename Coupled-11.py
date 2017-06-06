@@ -227,9 +227,9 @@ class RunSim(object):
             pet       = for_mf[:,1].reshape(self.nrows, self.ncols)
             bcpl.StepDone(self.init.path_child, STEP_mf+1).mf_set(finf, 'finf')
             bcpl.StepDone(self.init.path_child, STEP_mf+1).mf_set(pet, 'pet')
+        
             self._debug('for_mf', STEP_mf, v, path_root=self.init.path_child)
             bcpl.StepDone(self.init.path_child, STEP_mf, v).swmm_is_done()
-            # bcpl.swmm_is_done(self.init.path_child, STEP_mf)
 
             ### MF step is runnning
             self._debug('mf_run', STEP_mf, v)

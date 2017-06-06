@@ -111,7 +111,9 @@ class StepDone(object):
             kper is increased by one in calling function
         """
         ext_dir  = op.join(self.path_child, 'MF', 'ext')
-        ext_file = op.join(self.path_child, '{}_{}.ref'.format(var, self.kper))
+        ext_file = op.join(ext_dir, '{}_{}.ref'.format(var, self.kper))
+        print self.kper
+        print ext_file
         fmt      = '%15.6E'
         with open(ext_file, 'w') as fh:
             np.savetxt(fh, data, fmt=fmt, delimiter='')
@@ -271,3 +273,20 @@ def swmm_get_all(steps, cells, mf_done, constants, mf_len=3774):
     mat_swmm *= 0.001
     #print '    ### WARNING: storage units ET may be wrong ### \n'
     return mat_swmm
+
+def write_array(f_path, f_n_root, kper, data, ext='.ref', fmt='%15.6E'):
+    """
+    Purpose: Write array for MODFLOW to disk.
+    Arguments:
+        f_path = path
+        f_n_root = file name root
+        kper = time step (2 will be added to align with swmm)
+        data = infiltration or evaporation rates (numpy 2d grid)
+        ext = file extension, default = '.ref'
+        fmt = number format
+    """
+    f_name = os.path.join(f_path, '{}{}{}'.format(f_n_root, kper, ext))
+    print kper
+    print f_name
+    with open(f_name, 'w') as fh:
+        np.savetxt(fh, data, fmt=fmt, delimiter='')
