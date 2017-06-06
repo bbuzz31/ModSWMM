@@ -70,9 +70,9 @@ class InitSim(object):
         self.slr_name    = 'SLR-{}_{}'.format(self.slr, time.strftime('%m-%d'))
         self.mf_parms    = self.mf_params()
         self.swmm_parms  = self.swmm_params()
-        self.path_parent = op.join(op.expanduser('~'), 'Google_Drive', 'WNC', parm_name)
+        self.path_parent = op.join(op.expanduser('~'), 'Google_Drive', 'WNC',
+                                                        'Coupled', parm_name)
         self.path_child  = op.join(self.path_parent, 'Child_{}'.format(self.slr))
-                                # time.strftime('%b')+ext, 'Child_{}'.format(slr))
         self.path_data   = op.join(op.dirname(self.path_parent), 'Data')
         self.path_res    = op.join('/', 'Volumes', 'BB_4TB', 'Thesis',
                                                 'Results_{}'.format(parm_name))
@@ -366,30 +366,32 @@ class FinishSim(object):
 
         ### REMOVE DIR
         shutil.rmtree(self.init.path_child) # to remove parent do outside main
-        
+
         print 'Results moved to {}\n'.format(dest_dir)
 
-    def pickles(self):
+    def pickles(self, cap=False):
         call(['PickleRaw.py', self.path_res]) # DONT use rel path (os.getcwd())
 
-        print '\nFormatting Data ...\n'
-        picklefmt.main(PATH_result)
-
-        print '\nBacking up to Time Capsule ...\n'
-        call(['TC_backup.py', self.path_res])
+        if cap:
+            print '\nBacking up to Time Capsule ...\n'
+            call(['TC_backup.py', self.path_res])
 
 def main(args):
     """ Run MODSWMM """
     slr, days, parm = args
     InitObj   = InitSim(slr, days, parm)
+
     # run SS and create SWMM .inp
     InitObj.init()
+
     # start transient MF and SWMM sol
     RunSim(InitObj).run_coupled()
+
     # save log, move results, pickle?
     FinishSim(InitObj).log()
     FinishSim(InitObj).store_results()
-    # FinishSim(slr, days).pickles() # needs to go outside of the loop?
+
+    # FinishSim(InitObj).pickles(cap=False) # needs to go outside of the loop?
 
 if __name__ == '__main__':
     arguments = docopt(__doc__)

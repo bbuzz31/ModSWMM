@@ -260,6 +260,7 @@ if __name__ == '__main__':
                    [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
 
 
+        print '\nFormatting Data ...\n'
         PickleFmt.main(PATH_result);
         end = time.time()
         print 'Pickles made in ~ {} min'.format(round((end-start)/60., 2))
