@@ -34,7 +34,7 @@ def run_sensitivity():
     sensitivity_obj = sensitivity(PATH_res)
     sensitivity_obj.total_et()
 
-PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-26')
+PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_06-05')
 run_summary()
 run_dtw()
 run_runoff()
