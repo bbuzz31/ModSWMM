@@ -12,7 +12,7 @@ Examples:
 
 Arguments:
   kpers       Total number of MODFLOW Steps / SWMM Days
-  parm       Directory Name. Should be parameter altered.
+  parm        Directory Name. Should be parameter altered.
 
 Options:
   -c, --coupled=BOOL  Run a Coupled Simulation | SWMM input file    [default: 1]
@@ -182,14 +182,13 @@ class RunSim(object):
     """ Run Coupled MODSWMM Simulation """
     def __init__(self, initobj):
         self.init       = initobj
-        self.swmm_steps = 24
         self.df_subs    = pd.read_csv(op.join(self.init.path_data, 'SWMM_subs.csv'),
                                                              index_col='Zone')
         self.nrows      = int(max(self.df_subs.ROW))
         self.ncols      = int(max(self.df_subs.COLUMN))
+        self.gridsize    = self.nrows * self.ncols
 
-        self.stors      = [11965, 11966, 11970, 12022]
-        os.chdir(self.init.path_child)
+        os.chdir(self.init.path_child) # find start/stop files?
 
     def run_coupled(self):
         """ Run MF and SWMM together """
@@ -216,10 +215,10 @@ class RunSim(object):
                 self._debug('from_swmm', STEP_mf, v)
             else:
                 self._debug('last', STEP_mf, v)
+
             ### run and pull from swmm
             self._debug('swmm_run', STEP_mf, v)
-            for_mf       = bcpl.swmm_get_all(self.swmm_steps, sub_ids, last_step,
-                                             self.stors, self.nrows*self.ncols)
+            for_mf       = bcpl.swmm_get_all(sub_ids, last_step, self.gridsize)
 
             if last_step == True:    break
             ### overwrite new MF arrays
@@ -227,7 +226,7 @@ class RunSim(object):
             pet       = for_mf[:,1].reshape(self.nrows, self.ncols)
             bcpl.StepDone(self.init.path_child, STEP_mf+1).mf_set(finf, 'finf')
             bcpl.StepDone(self.init.path_child, STEP_mf+1).mf_set(pet, 'pet')
-        
+
             self._debug('for_mf', STEP_mf, v, path_root=self.init.path_child)
             bcpl.StepDone(self.init.path_child, STEP_mf, v).swmm_is_done()
 
@@ -237,7 +236,8 @@ class RunSim(object):
             self._debug('for_swmm', STEP_mf, v)
 
             ### get SWMM values for new step from uzfb and fhd
-            mf_step_all = bcpl.mf_get_all(self.init.path_child, STEP_mf, **self.init.swmm_parms)
+            mf_step_all = bcpl.mf_get_all(self.init.path_child, STEP_mf,
+                                                        **self.init.swmm_parms)
             self._debug('set_swmm', STEP_mf, v)
 
             # set MF values to SWMM

@@ -17,22 +17,6 @@ import flopy.utils.formattedfile as ff
 import flopy.utils.binaryfile as bf
 import swmmSOL as swmm
 
-def cell_num(row, col, n_cols=51, show=False):
-    """
-    Give 0 indexed row / col.
-    Use row and column to find flattened MODFLOW number
-    Searches row wise, n_row is how many rows in grid.
-    """
-    row += 1
-    col += 1
-    if row == 1:
-        cellnum = col
-    if row >= 2:
-        cellnum = n_cols * (row-1) + col
-    if show:
-        print '1D Loc = {}'.format(cellnum + 10000)
-    return cellnum
-
 class StepDone(object):
     def __init__(self, path_child='', kper=-1, v=4):
         self.path_child = path_child
@@ -118,42 +102,39 @@ class StepDone(object):
         with open(ext_file, 'w') as fh:
             np.savetxt(fh, data, fmt=fmt, delimiter='')
 
-
 def mf_get_all(path_root, mf_step, **params):
     """
     Purpose:
         Get head from .fhd (need head even when water is discharging to land)
         Get soil water from uzf gage files.
-        Soil water is average over whole unsaturated zone.
+        Soil water is average over whole unsaturated zone (or just top).
     Args:
-        mf_model: filepath where .uzfbs and .fhd is located
+        path_root: filepath where MF dir is with .uzfbs and .fhd
         mf_step: timestep to use
     Returns:
         pd.DataFrame
-
     Notes:
-        Set soil water when water at land surface to porosity?????????
-            Need to set to something.
+        Set soil water when water at land surface to porosity
+                    Need to set to something.
     """
-    # get heads @ time step from .fhd : totim = 1 index; len includes CHD & stor
 
     mf_model   = os.path.join(path_root, 'MF', params.get('name'))
-    # mf_model   = os.path.join(path_root, slr_name)
-    # path_cup = os.path.join('/', 'Users', 'bb', 'Google_Drive','WNC', 'Coupled', time.strftime('%b'))
+
     try:
         hds    = ff.FormattedHeadFile(mf_model + '.fhd', precision='double')
     except:
         raise SystemError(mf_model+'.fhd does not exist.\nCheck paths')
-
     try:
-        uzf = bf.CellBudgetFile(mf_model + '.uzfcb2.bin', precision='single')
+        uzf    = bf.CellBudgetFile(mf_model + '.uzfcb2.bin', precision='single')
     except:
-        uzf = bf.CellBudgetFile(mf_model + '.uzfcb2.bin', precision='double')
+        uzf    = bf.CellBudgetFile(mf_model + '.uzfcb2.bin', precision='double')
 
-    head_fhd      = hds.get_data(totim=mf_step+1, mflay=0)
-    uzf_data      = abs(uzf.get_data(text='SURFACE LEAKAGE', totim=mf_step+1)[0])
+    head_fhd   = hds.get_data(totim=mf_step+1, mflay=0)
+    uzf_data   = abs(uzf.get_data(text='SURFACE LEAKAGE', totim=mf_step+1)[0])
 
-    arr_surf      = np.load(os.path.join(op.dirname(op.dirname(path_root)), 'Data', 'Land_Z.npy')).reshape(head_fhd.shape)
+    arr_surf   = np.load(op.join(op.dirname(op.dirname(path_root)),
+                                'Data', 'Land_Z.npy')).reshape(head_fhd.shape)
+
     # intialize numpy arrays that will get updated based on row/col location
     index         = np.linspace(10001, 10000 + head_fhd.size, head_fhd.size, dtype=int)
     theta_uzfb    = np.empty(head_fhd.shape)
@@ -228,24 +209,23 @@ def mf_get_all(path_root, mf_step, **params):
 
     return mf_subs
 
-def swmm_get_all(steps, cells, mf_done, constants, mf_len=3774):
+def swmm_get_all(cells, mf_done, gridsize):
     """
     Purpose:
         Run SWMM get functions to obtain values for next MF step
             enables smaller time steps than modflow
     Args:
-        steps: number of swmm steps to run; depends on MF (25 if running MF daily)
         cells: list of cells to pull (get from SWMM_subs_new.csv)
         mf_done: boolean, skips 'gets' if MODFLOW has finished
-        stor_unit: storage units get constant infiltration
-        mf_len: length of modflow grid; for reshaping purposes
+        gridsize: length of modflow grid; for reshaping purposes
 
     Returns:
         Dataframe of index cells with the SUM of steps for each category
     """
-
-    elapsed = []
-    mat_swmm = np.zeros([mf_len, 2], dtype=np.float32)
+    steps    = 24 # hours
+    stors    = [11965, 11966, 11970, 12022]
+    elapsed  = []
+    mat_swmm = np.zeros([gridsize, 2], dtype=np.float32)
     for timesteps in range(0,steps):
         if swmm.is_over():
             print '\n   ### ERROR: SWMM has less steps than MF  ### \n'
@@ -262,7 +242,7 @@ def swmm_get_all(steps, cells, mf_done, constants, mf_len=3774):
                 mat_swmm[pos, 0]   += swmm.get(str(cell), swmm.INFIL, swmm.SI)
                 mat_swmm[pos, 1]   += swmm.get(str(cell), swmm.GW_ET, swmm.SI)
             # set storage units to steady state rate
-            for unit in constants:
+            for unit in stors:
                 mat_swmm[unit-10001, 0]  += 0.0115983375
                 mat_swmm[unit-10001, 1]  += 0.0115983375
         else:
@@ -274,19 +254,18 @@ def swmm_get_all(steps, cells, mf_done, constants, mf_len=3774):
     #print '    ### WARNING: storage units ET may be wrong ### \n'
     return mat_swmm
 
-def write_array(f_path, f_n_root, kper, data, ext='.ref', fmt='%15.6E'):
+def cell_num(row, col, n_cols=51, show=False):
     """
-    Purpose: Write array for MODFLOW to disk.
-    Arguments:
-        f_path = path
-        f_n_root = file name root
-        kper = time step (2 will be added to align with swmm)
-        data = infiltration or evaporation rates (numpy 2d grid)
-        ext = file extension, default = '.ref'
-        fmt = number format
+    Give 0 indexed row / col.
+    Use row and column to find flattened MODFLOW number
+    Searches row wise, n_row is how many rows in grid.
     """
-    f_name = os.path.join(f_path, '{}{}{}'.format(f_n_root, kper, ext))
-    print kper
-    print f_name
-    with open(f_name, 'w') as fh:
-        np.savetxt(fh, data, fmt=fmt, delimiter='')
+    row += 1
+    col += 1
+    if row == 1:
+        cellnum = col
+    if row >= 2:
+        cellnum = n_cols * (row-1) + col
+    if show:
+        print '1D Loc = {}'.format(cellnum + 10000)
+    return cellnum
