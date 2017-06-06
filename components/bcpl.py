@@ -91,7 +91,7 @@ class StepDone(object):
             data = infiltration or evaporation rates (numpy 2d grid)
             var  = file name root (finf, pet)
         Note:
-            kper is increased by one in calling function
+            kper is increased by TWO in calling function
         """
         ext_dir  = op.join(self.path_child, 'MF', 'ext')
         ext_file = op.join(ext_dir, '{}_{}.ref'.format(var, self.kper))

@@ -113,7 +113,7 @@ class InitSim(object):
                ('Seep', 0), ('Ebot' ,  0), ('Egw', 0),
                ### GROUNDWATER
                ('Node', 13326),
-               ('a1' , 0.00002), ('b1', 0), ('a2', 0), ('b2', 0), ('a3', 0),
+               ('a1' , 0.00001), ('b1', 0), ('a2', 0), ('b2', 0), ('a3', 0),
                ('Dsw', 0), ('Ebot', 0),
                ### JUNCTIONS
                # note elevation and maxdepth maybe updated and overwrittten
@@ -134,8 +134,7 @@ class InitSim(object):
 
         start_date  = datetime.strptime(self.mf_parms['START_DATE'], '%m/%d/%Y')
         SWMM_params['END_DATE'] = datetime.strftime(start_date + timedelta(
-                                    days=SWMM_params['days']+1), '%m/%d/%Y')
-
+                                    days=SWMM_params['days']), '%m/%d/%Y')
 
         return SWMM_params
 
@@ -219,7 +218,7 @@ class RunSim(object):
 
             else:
                 self._debug('last', STEP_mf, v)
-                print ('  Writing SWMM .rpt ')
+                self._debug('swmm_rpt', STEP_mf, v)
                 break
 
             ### overwrite new MF arrays
@@ -290,6 +289,8 @@ class RunSim(object):
             message.extend(['', '  *** SIMULATION HAS FINISHED ***','  Runoff Error: {}'.format(errs[0]),
                                 '  Flow Routing Error: {}'.format(errs[1]),
                                 '  **************************************'])
+        if 'swmm_rpt' in steps:
+            print ('\n  Writing SWMM .rpt \n')
 
         if verb_level == 1 or verb_level == 3:
             print ('\n'.join(message))
@@ -297,7 +298,7 @@ class RunSim(object):
             with open(op.join(self.init.path_child, 'Coupled_{}.log'.format(
                         op.basename(self.init.path_parent))), 'a') as fh:
                         [fh.write('{}\n'.format(line)) for line in message]
-        if verb_level == 4 and 'swmm_run' in steps or 'mf_run' in steps:
+        if verb_level == 4 and 'swmm_run' in steps or 'mf_run' in steps or 'swmm_rpt' in steps:
             print ('\n'.join(message))
 
         return message
