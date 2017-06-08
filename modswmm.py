@@ -65,17 +65,18 @@ class InitSim(object):
     def __init__(self, slr, days, parm_name):
         self.slr         = slr
         self.days        = days
+        self.parm_name   = parm_name
         self.verbose     = 4
         self.coupled     = True
         self.slr_name    = 'SLR-{}_{}'.format(self.slr, time.strftime('%m-%d'))
         self.mf_parms    = self.mf_params()
         self.swmm_parms  = self.swmm_params()
         self.path_parent = op.join(op.expanduser('~'), 'Google_Drive', 'WNC',
-                                                        'Coupled', parm_name)
+                                                    'Coupled', self.parm_name)
         self.path_child  = op.join(self.path_parent, 'Child_{}'.format(self.slr))
         self.path_data   = op.join(op.dirname(self.path_parent), 'Data')
         self.path_res    = op.join('/', 'Volumes', 'BB_4TB', 'Thesis',
-                                                'Results_{}'.format(parm_name))
+                                            'Results_{}'.format(self.parm_name))
         self.start       = time.time()
 
     def mf_params(self):
@@ -252,7 +253,7 @@ class RunSim(object):
         Control Messages Printing.
         Verb_level 0 == silent
         Verb_level 1 == to console
-        Verb_level 2 == to Coupled_today.log
+        Verb_level 2 == to Coupled_param.log
         Verb_level 3 == to console and log
         Verb_level 4 == to console, make sure still working
         Errs         = final SWMM Errors.
@@ -260,6 +261,7 @@ class RunSim(object):
         message=[]
         if not isinstance(steps, list):
             steps=[steps]
+
         if 'new' in steps:
             message.extend(['','  *************', '  NEW DAY: {}'.format(tstep),
                                '  *************',''])
@@ -296,7 +298,7 @@ class RunSim(object):
             print ('\n'.join(message))
         if verb_level == 2 or verb_level == 3:
             with open(op.join(self.init.path_child, 'Coupled_{}.log'.format(
-                        op.basename(self.init.path_parent))), 'a') as fh:
+                        self.parm_name)), 'a') as fh:
                         [fh.write('{}\n'.format(line)) for line in message]
         if verb_level == 4 and 'swmm_run' in steps or 'mf_run' in steps or 'swmm_rpt' in steps:
             print ('\n'.join(message))
@@ -312,7 +314,7 @@ class FinishSim(object):
     def log(self):
         """ Write Elapsed time and Parameters to Log File """
         # def _log(path_root, slr_name,  elapsed='', params=''):
-        path_log = op.join(self.init.path_child, 'Coupled_{}.log'.format(self.date))
+        path_log = op.join(self.init.path_child, 'Coupled_{}.log'.format(self.init.parm_name))
         opts     = ['START_DATE', 'name', 'days', 'END_DATE']
         headers  = {'Width': 'Subcatchments:', 'N-Imperv': 'SubAreas:',
                    'MaxRate' : 'Infiltration:', 'Por' : 'Aquifer:',
@@ -366,7 +368,7 @@ class FinishSim(object):
         [shutil.copy(swmm_file, op.join(dest_dir, op.basename(swmm_file)))
                                                   for swmm_file in cur_files]
         ### LOG
-        log       = op.join(self.init.path_child, 'Coupled_{}.log'.format(self.date))
+        log       = op.join(self.init.path_child, 'Coupled_{}.log'.format(self.init.parm_name))
         if op.exists(log):
             shutil.copy (log, op.join(dest_dir, op.basename(log)))
 
@@ -421,7 +423,7 @@ if __name__ == '__main__':
         pool.map(main, ARGS)
         res_path = op.join('/', 'Volumes', 'BB_4TB', 'Thesis',
                                         'Results_{}').format(args['PARM'])
-        # call(['PickleRaw.py', res_path])
+        call(['PickleRaw.py', res_path])
 
     else:
         # run MF SS and create SWMM .INP

@@ -33,9 +33,9 @@ class StepDone(object):
         message = ['SWMM step done for next MODFLOW Trans: {}'.format(self.kper)]
         if self.v == 1 or self.v == 3:
             print ('\n'.join(message))
-        if self.v >= 2:
+        if self.v == 2 or self.v == 3:
             with open(op.join(self.path_child, 'Coupled_{}.log'.format(
-                                    time.strftime('%m-%d'))), 'a') as fh:
+                                    op.basename(self.path_child))), 'a') as fh:
                 fh.write('\n'.join(message))
 
     def mf_is_done(self):

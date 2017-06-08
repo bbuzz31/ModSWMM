@@ -24,7 +24,7 @@ Notes:
   Created: 2017-03-06
   Update: 2017-05-18
 """
-
+from __future__ import print_function
 import BB
 import os
 import os.path as op
@@ -49,33 +49,34 @@ from multiprocessing import Pool
 class pickle_base(object):
     def __init__(self, path_result):
         self.path       = path_result
-        self.path_picks = self._pick_dir()
-        self.scenarios  = [op.join(self.path, slr) for slr in
-                        os.listdir(op.join(self.path)) if slr.startswith('SLR')]
-        self.slr        = [op.basename(scenario).split('_')[0][-3:] for
-                                         scenario in self.scenarios]
-        # self.slr_names?
-        self.st_end     = self._st_end()
-        self.ts_hr      = pd.date_range(self.st_end[0], self.st_end[1], freq='H')
-        self.ts_day     = pd.date_range(self.st_end[0], self.st_end[1], freq='D')
+        self.path_picks = self._make_pick_dir()
+        _               = self._make_scenarios_slr()
+        __              = self._make_ts()
 
-    def _pick_dir(self, verbose=0):
+    def _make_pick_dir(self, verbose=0):
         """ Make Pickles Directory if it doesn't exist """
         path_pickle = op.join(self.path, 'Pickles')
         try:
             os.makedirs(path_pickle)
         except:
             if verbose:
-                print 'WARNING - Overwriting exiting pickles in: \n\t{}'.format(path_pickle)
+                print ('WARNING - Overwriting exiting pickles in: \n\t{}'.format(path_pickle))
 
         return path_pickle
 
-    def _st_end(self):
+    def _make_scenarios_slr(self):
+        """ Get Scenarios and SLR from Dirs """
+        self.scenarios = [op.join(self.path, slr) for slr in os.listdir(self.path)
+                                                if slr.startswith('SLR')]
+        self.slr       = [op.basename(scenario).split('_')[0][-3:] for
+                                         scenario in self.scenarios]
+    def _make_ts(self):
         """ Pull start/end time from any .out file """
-        slr_name   = 'SLR-{}_{}'.format(self.slr[0], self.scenarios[0][-5:])
-        out_file   = op.join(self.path, slr_name, slr_name + '.out')
-        st_end     = swmtbx.SwmmExtract(out_file).GetDates() # returns a tuple
-        return st_end
+        slr_name    = 'SLR-{}_{}'.format(self.slr[0], self.scenarios[0][-5:])
+        out_file    = op.join(self.path, slr_name, slr_name + '.out')
+        st_end      = swmtbx.SwmmExtract(out_file).GetDates() # returns a tuple
+        self.ts_hr  = pd.date_range(st_end[0], st_end[1], freq='H')
+        self.ts_day = pd.date_range(st_end[0], st_end[1], freq='D')
 
 class pickle_swmm(pickle_base):
     def __init__(self, path_result):
@@ -93,20 +94,20 @@ class pickle_swmm(pickle_base):
         variables = [1, 14, 10, 12, 3, 4, 13]
         sys_mat   = np.zeros([len(self.ts_hr), len(varnames) * len(self.scenarios)])
         colnames  = []
-
         for i, scenario in enumerate(self.scenarios):
             slr_name = op.basename(scenario)
             slr      = slr_name[4:7]
             out_file = op.join(scenario, '{}.out'.format(slr_name))
-
             colnames.extend(['{}_{}'.format(var_name, slr) for var_name in varnames])
             for j,v in enumerate(variables):
-                sys_mat[:, j+i*len(variables)] = swmtbx.extract_arr(out_file,
+                # pull and store in matrix; truncate last (empty) day to fit
+                sys_mat[:, j+i*len(variables)] = (swmtbx.extract_arr(out_file,
                                                  'system,{},{}'.format(v,v))
+                                                 [:len(self.ts_hr)])
         swmm_sys = pd.DataFrame(sys_mat, index=self.ts_hr, columns=colnames)
         path_res = op.join(self.path_picks, 'swmm_sys.df')
         swmm_sys.to_pickle(path_res)
-        print 'DataFrame pickled to: {}'.format(path_res)
+        print ('SYS DataFrame pickled to: {}'.format(path_res))
 
 class pickle_uzf(pickle_base):
     def __init__(self, path_result):
@@ -134,7 +135,7 @@ class pickle_uzf(pickle_base):
                 # save separately so can load separately and faster
                 path_res = op.join(self.path_picks, '{}_{}.npy'.format(varnames[i], slr))
                 np.save(path_res, sys_mat)
-        print 'UZF arrays pickled to: {}'.format(self.path_picks)
+        print ('UZF arrays pickled to: {}'.format(self.path_picks))
 
 class pickle_ext(pickle_base):
     def __init__(self, path_result):
@@ -159,7 +160,7 @@ class pickle_ext(pickle_base):
         ext_sys  = pd.DataFrame(sys_mat, index=self.ts_day, columns=colnames)
         path_res = op.join(self.path_picks, 'ext_sums.df')
         ext_sys.to_pickle(path_res)
-        print 'DataFrame pickled to: {}'.format(path_res)
+        print ('EXT DataFrame pickled to: {}'.format(path_res))
 
 ### multiprocessing cannot use class methods
 def _ts_heads(args):
@@ -175,7 +176,7 @@ def _ts_heads(args):
     heads    = hds.get_alldata(mflay=0)
     res_path = op.join(path_pickle, 'heads_{}.npy'.format(slr))
     np.save(res_path, heads)
-    # print 'Np array pickled to to: {}'.format(res_path)
+    # print ('Np array pickled to to: {}'.format(res_path))
 
 def _sub_var(args):
     """
@@ -197,8 +198,9 @@ def _sub_var(args):
 
     for i, sub in enumerate(sub_names):
         for j, var in enumerate(variables):
-            sys_mat[:, j+i*len(variables)] = swmtbx.extract_arr(out_file,
-                                            'subcatchment,{},{}'.format(sub,var))
+            sys_mat[:, j+i*len(variables)] = (swmtbx.extract_arr(out_file,
+                                             'subcatchment,{},{}'.format(sub,var))
+                                              [:len(ts)])
 
     path_arr = op.join(path_pickle, 'swmm_{}_{}.npy'.format(varname, slr))
     np.save(path_arr, sys_mat)
@@ -228,39 +230,38 @@ if __name__ == '__main__':
         PickleFmt.main(PATH_result);
 
     elif args['--var']:
-        print 'Pickling SWMM {} to {} ... '.format(args['--var'], path_picks)
+        print ('Pickling SWMM {} to {} ... '.format(args['--var'], path_picks))
         pool = Pool(processes=len(scenarios))
         res = pool.map(_sub_var, zip(scenarios, [args['--var']]*len(scenarios),
                           [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
 
     ### Multiprocessing
     else:
-        print 'Pickling FHD heads to: {}'.format(path_picks)
+        print ('Pickling FHD heads to: {}'.format(path_picks))
         pool = Pool(processes=len(scenarios))
         res  = pool.map(_ts_heads, zip(scenarios, [path_picks] * len(scenarios)))
 
-        print 'Pickling SWMM Heads to {} ... '.format(path_picks)
+        print ('Pickling SWMM Heads to {} ... '.format(path_picks))
         pool = Pool(processes=len(scenarios))
         res  = pool.map(_sub_var, zip(scenarios, ['heads']*len(scenarios),
                      [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
 
-        print 'Pickling SWMM Runoff to {} ... '.format(path_picks)
+        print ('Pickling SWMM Runoff to {} ... '.format(path_picks))
         pool = Pool(processes=len(scenarios))
         res  = pool.map(_sub_var, zip(scenarios, ['run']*len(scenarios),
                   [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
 
-        print 'Pickling SWMM Infil to {} ... '.format(path_picks)
+        print ('Pickling SWMM Infil to {} ... '.format(path_picks))
         pool = Pool(processes=len(scenarios))
         res  = pool.map(_sub_var, zip(scenarios, ['inf']*len(scenarios),
                  [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
 
-        print 'Pickling SWMM Evap to {} ... '.format(path_picks)
+        print ('Pickling SWMM Evap to {} ... '.format(path_picks))
         pool = Pool(processes=len(scenarios))
         res  = pool.map(_sub_var, zip(scenarios, ['evap']*len(scenarios),
                    [ts_hr]*len(scenarios), [path_picks]*len(scenarios)))
 
-
-        print '\nFormatting Data ...\n'
+        print ('\nFormatting Data ...\n')
         PickleFmt.main(PATH_result);
         end = time.time()
-        print 'Pickles made in ~ {} min'.format(round((end-start)/60., 2))
+        print ('Pickles made in ~ {} min'.format(round((end-start)/60., 2)))

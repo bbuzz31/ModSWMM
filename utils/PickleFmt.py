@@ -3,6 +3,7 @@ Format Pickled Output into Data for Plots
 Call main from PickleRaw.py
 Created: 2017-05-03
 """
+from __future__ import print_function
 import os
 import os.path as op
 import numpy as np
@@ -48,7 +49,7 @@ class fmt_base(object):
                 f_name_old = 'swmm_{}_{}.npy'.format(var, slr)
                 f_name_new = 'swmm_{}_grid_{}.npy'.format(var, slr)
                 if op.exists(op.join(self.path_picks, f_name_new)):
-                    print '{} exists, not making swmm grid'.format(f_name_new)
+                    print ('{} exists, not making swmm grid'.format(f_name_new))
                 elif not op.isfile(op.join(self.path_picks, f_name_old)):
                     raise ValueError('{} wasnt pickled from .out files.\
                                            Use PickleRaw.py'.format(var))
@@ -118,7 +119,7 @@ class fmt_dtw(fmt_base):
         df_res   = pd.DataFrame(mat_res, index=self.ts_hr, columns=colnames)
         fname    = 'percent_at_surface.df'
         df_res.to_pickle(op.join(self.path_picks, fname))
-        print 'DataFrame pickled to: {}'.format(op.join(self.path_picks, fname))
+        print ('DataFrame pickled to: {}'.format(op.join(self.path_picks, fname)))
 
     def make_df_year(self):
         """
@@ -138,7 +139,7 @@ class fmt_dtw(fmt_base):
         df_res = pd.concat([df_yr for df_yr in df_yrs], axis=1)
         fname = 'dtw_yr.df'
         df_res.to_pickle(op.join(self.path_picks, fname))
-        print 'DataFrame pickled to: {}'.format(op.join(self.path_picks, fname))
+        print ('DataFrame pickled to: {}'.format(op.join(self.path_picks, fname)))
 
     def _make_mat_dtw(self, slr):
         """ Make Matrix of Elevations - Heads (DTW) (ts x 74 x 51) """
@@ -181,11 +182,11 @@ class fmt_run(fmt_base):
 
         mat_res *= (100/area)
         df_res   = pd.DataFrame(mat_res, index=self.ts_hr, columns=colnames)
-        # print df_res.describe()
+        # print (df_res.describe())
 
         fname    = 'percent_vols.df'
         df_res.to_pickle(op.join(self.path_picks, fname))
-        print 'DataFrame pickled to: {}'.format(op.join(self.path_picks, fname))
+        print ('DataFrame pickled to: {}'.format(op.join(self.path_picks, fname)))
 
         return df_res
 
