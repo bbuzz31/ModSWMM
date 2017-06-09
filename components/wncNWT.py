@@ -32,6 +32,7 @@ Notes:
 from __future__ import print_function
 import os
 import os.path as op
+import linecache
 import time
 import numpy   as np
 import pandas  as pd
@@ -191,6 +192,11 @@ class WNC_Inps(WNC_Base):
     def upw(self):
         hk  = self.df_mf.filter(like='KX').T.values.reshape(self.nlays, self.nrows, self.ncols)
         vk  = self.df_mf.filter(like='KZ').T.values.reshape(self.nlays, self.nrows, self.ncols)
+        # calibration base = 3.76022E+00; best = 2.87323E+00
+        hk[0] *= .75
+        hk[1] *= 2
+        vk    *= 4
+
         upw = flomf.ModflowUpw(self.mf, laytyp=np.ones(self.nlays),
                                    layavg=np.ones(self.nlays)*2, hk=hk, vka=vk,
                                    sy=self.params.get('sy', 0.25))
@@ -306,7 +312,36 @@ class WNC_Inps(WNC_Base):
                 obj.plot()
         plt.show()
 
-def main_SS(path_root, **params):
+def parse_list(path, name):
+    """ Pull the Sum Squared Error from the .list file """
+    path_list = op.join(path, 'MF', '{}.list'.format(name))
+    in_obs    = False
+    # large empty matrix for storing
+    arr = np.zeros([100, 3])
+    names = []
+    with open (path_list) as fh:
+        j = 0
+        for i, line in enumerate(fh):
+            if 'HEAD AND DRAWDOWN' in line:
+                in_obs = True
+                start_lineno = i
+            if 'HEAD/DRAWDOWN' in line:
+                print ('\nSum of Squared Differences: {}'.format(line.split(':')[1]))
+                in_obs = False
+            if in_obs and i > start_lineno+3:
+                 items = line.split()
+                 if len(items) < 1:
+                     continue
+                 names.append(items[0])
+                 for k, item in enumerate(items[1:]):
+                     arr[j, k] = item
+                 j+=1
+    arr = arr[:j, :]
+    colnames = ['observed', 'simulated', 'differnce']
+    df = (pd.DataFrame(arr, index=names, columns=colnames))
+    return df
+
+def main_SS(path_root, calibrate=False, **params):
     """ Run a SS simulation for generating SWMM inp (initial heads/wc) """
     params['days']    = 2
     params['coupled'] = False
@@ -314,6 +349,9 @@ def main_SS(path_root, **params):
     WNC_model = WNC_Inps(path_root, **params)
     WNC_model.write()
     WNC_model.run()
+    ### fn to pull and print SSE
+    if calibrate:
+        parse_list(path_root, params['name'])
 
 def main_TRS(path_root, **params):
     """ Run a Transient simulation, MODFLOW only """
