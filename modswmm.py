@@ -85,7 +85,7 @@ class InitSim(object):
                     ('days' , self.days), ('START_DATE', '06/29/2011'),
                     ('path_exe', op.join('/', 'opt', 'local', 'bin')),
                     ('ss', False), ('ss_rate', 0.0002783601), ('strt', 1),
-                    ('extdp', 3.0), ('extwc', 0.101), ('eps', 3.75),
+                    ('extdp', 2.5), ('extwc', 0.101), ('eps', 3.75),
                     ('thts', 0.3), ('sy', 0.25), ('vks', 0.12), ('surf', 0.3048),
                     ('noleak', False),
                     ('coupled', self.coupled), ('Verbose', self.verbose)

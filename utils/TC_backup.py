@@ -46,15 +46,17 @@ def main(path_dest):
     # make only the directories not already existing
     for d in os.listdir(PATH_src):
         d_full = op.join(PATH_src, d)
-        if op.isdir(d_full) and d_full in exists:
+        # only copy over directories
+        if not op.isdir(d_full):
+            continue
+        else:
             print (d, 'already exists, skipping...')
-        elif op.isdir(d_full):
-            make_tarfile(op.join(path_dest, d), d_full)
+
+
 
 if __name__ == '__main__':
     arguments   = docopt(__doc__)
     typecheck   = Schema({'PATH_DEST' : os.path.exists}, ignore_extra_keys=True)
-
     PATH_tcap   = op.abspath(typecheck.validate(arguments)['PATH_DEST'])
 
     main(PATH_tcap)
