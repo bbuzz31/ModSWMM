@@ -87,7 +87,7 @@ class InitSim(object):
                     ('ss', False), ('ss_rate', 0.0002783601), ('strt', 1),
                     ('extdp', 2.5), ('extwc', 0.101), ('eps', 3.75),
                     ('thts', 0.3), ('sy', 0.25), ('vks', 0.12), ('surf', 0.3048),
-                    ('noleak', False),
+                    ('noleak', False), ('hk_factor', 1), ('vk_factor', 1),
                     ('coupled', self.coupled), ('Verbose', self.verbose)
                     ])
         return MF_params
@@ -162,6 +162,7 @@ class InitSim(object):
             os.makedirs(op.join(self.path_child, 'MF'))
         if not op.isdir(op.join(self.path_child, 'SWMM')):
             os.makedirs(op.join(self.path_child, 'SWMM'))
+        # this doesn't work correctly; have to ensure that Coupled/Data exist
         if not op.isdir(self.path_data):
             data_dir = op.join(op.dirname(op.dirname(self.path_child)[0])[0], 'Data')
             os.symlink(data_dir, self.path_data)
@@ -380,9 +381,9 @@ class FinishSim(object):
     def pickles(self, cap=False):
         call(['PickleRaw.py', self.path_res]) # DONT use rel path (os.getcwd())
 
-        if cap:
-            print ('\nBacking up to Time Capsule ...\n')
-            call(['TC_backup.py', self.path_res])
+        # if cap:
+        #     print ('\nBacking up to Time Capsule ...\n')
+        #     call(['TC_backup.py', self.path_res]) # wrong path
 
 def main(args):
     """ Run MODSWMM """

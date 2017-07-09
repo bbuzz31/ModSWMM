@@ -193,10 +193,9 @@ class WNC_Inps(WNC_Base):
         hk  = self.df_mf.filter(like='KX').T.values.reshape(self.nlays, self.nrows, self.ncols)
         vk  = self.df_mf.filter(like='KZ').T.values.reshape(self.nlays, self.nrows, self.ncols)
         # calibration base = 3.76022E+00; best = 2.87323E+00
-        hk[0] *= .75
-        hk[1] *= 2
-        vk    *= 4
-
+        hk[0] *= (.75 * self.params.get('hk_factor', 1))
+        hk[1] *= (2   * self.params.get('hk_factor', 1))
+        vk    *= (4   * self.params.get('vk_factor', 1))
         upw = flomf.ModflowUpw(self.mf, laytyp=np.ones(self.nlays),
                                    layavg=np.ones(self.nlays)*2, hk=hk, vka=vk,
                                    sy=self.params.get('sy', 0.25))
