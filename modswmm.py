@@ -99,10 +99,10 @@ class InitSim(object):
                ('START_DATE', self.mf_parms['START_DATE']),
                ('name', self.slr_name), ('days', self.days), ('diff', 0.05),
                # SUBCATCHMENTS
-               ('Width', 200),
+               ('Width', 200), ('perImperv_factor', 1),
                # SUBAREAS
-               ('N-Imperv', 0.011), ('N-Perv', 0.015),
-               ('S-Imperv', 0.05), ('S-Perv', 2.54),
+               ('N-Imperv', 0.011), ('N-Perv_factor', 1),
+               ('S-Imperv', 0.05), ('S-Perv_factor', 1),
                # INFILTRATION
                ('MaxRate', 50), ('MaxInfil', 0),# ('MinRate', 0.635),
                ('Decay', 4), ('DryTime', 7),
@@ -111,7 +111,7 @@ class InitSim(object):
                ('FC', self.mf_parms['sy']), ('Ksat' , self.mf_parms['vks']),
                ('Kslope', 25), ('Tslope', 0.00),
                ('ETu', 0.50), ('Ets', self.mf_parms['extdp']),
-               ('Seep', 0), ('Ebot' ,  0), ('Egw', 0),
+               ('Seep', 0), ('Ebot', 0), ('Egw', 0),
                ### GROUNDWATER
                ('Node', 13326),
                ('a1' , 0.00001), ('b1', 0), ('a2', 0), ('b2', 0), ('a3', 0),

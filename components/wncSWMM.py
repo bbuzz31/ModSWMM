@@ -99,13 +99,13 @@ class WNC_SWMM_Inps(WNC_Base):
 
         ### SUBCATCHMENTS
         sub.df['Outlet']    = self.df_subs.Outlet.astype(int)
-        sub.df['perImperv'] = self.df_subs.perImperv
+        sub.df['perImperv'] = self.df_subs.perImperv * self.params.get('perImperv_factor', 1)
         sub.df['perSlope']  = self.df_subs.perSlope
         sub = sub.final()
 
         ### SUBAREAS
-        area.df['N-Perv'] =  self.df_subs.N_Perv
-        area.df['S-Perv'] =  self.df_subs.S_Perv
+        area.df['N-Perv'] =  self.df_subs.N_Perv * self.params.get('N-Perv_factor', 1)
+        area.df['S-Perv'] =  self.df_subs.S_Perv * self.params.get('S-Perv_factor', 1)
         area = area.final()
 
         ### INFILATRATION
