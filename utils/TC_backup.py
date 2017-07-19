@@ -49,6 +49,8 @@ def main(path_dest):
         # only copy over directories
         if not op.isdir(d_full):
             continue
+        if not d in exists:
+            make_tarfile(op.join(path_dest, d), d_full)
         else:
             print (d, 'already exists, skipping...')
 

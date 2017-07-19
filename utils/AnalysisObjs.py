@@ -263,7 +263,8 @@ class summary(res_base):
     def ts_uzf_sums(self, smooth=False):
         """
         Format UZF RCH, UZF ET, and Precip for Plotting.
-        Optionally Smooth
+        Optionally Smooth -- don't think it works
+        Optionally return full (untrucated for init conditions)
         Returns df of monthly values for ONE year.
         """
         df_sums  = pd.DataFrame({'Precip':self.df_sys['Precip_{}'.format(
@@ -275,10 +276,11 @@ class summary(res_base):
             for slr in self.slr:
                 arr_sum = arr[slr].reshape(len(self.ts_day),-1).sum(1)
                 df_sums['{}_{}'.format(self.var_map[name], slr)] = arr_sum
-
+        df_sums.plot()
+        return
         # truncate init conditions and resample to monthly
         df_mon   = abs(df_sums).loc[self.st:self.end, :].resample('MS').mean()
-        # print df_mon.head()
+
         if not smooth:
             return df_mon
 
@@ -290,10 +292,10 @@ class summary(res_base):
 
     def plot_ts_uzf_sums(self):
         """
-        Plot Sum of Recharge, ET,  at all locs, each step, monthly mean
+        Plot Sum of Recharge, ET, at all locs, each step, monthly mean
         PLot Precipation
         """
-        df_mon   = self.ts_uzf_sums()
+        df_mon   = self.ts_uzf_sums(untruncate)
         fig      = plt.figure()
         axe      = []
         gs       = gridspec.GridSpec(3, 2)
@@ -457,6 +459,24 @@ class summary(res_base):
 
         return df_heads
 
+    def untruncated(self):
+        """
+        Plot ts of untrucated head at one loc to show effects of init conditions
+        """
+        arr_mf    = self._load_fhd()[self.slr[0]][:, self.row, self.col][:-1]
+        df_heads  = pd.DataFrame({'MF_{}'.format(self.slr[0]) :arr_mf}, index=self.ts_day)
+        fig, axes = plt.subplots()
+        df_heads.plot(ax=axes, legend=False)
+        axes.yaxis.grid(True)
+        axes.xaxis.set_major_locator(mpl.dates.MonthLocator())
+        axes.xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
+        # do this instead of using autofmt (Gridspec)
+        for label in axes.get_xticklabels():
+             label.set_ha('center')
+             label.set_rotation(20.)
+        axes.set_xlabel('Time (days)')
+        axes.set_ylabel('GW Head')
+        fig.set_label('untruncated_head')
     def _total_et(self):
         """ Sum UZF evap and Surf Evap. Requires SWMM Evap Grid Pickled. """
         dict_surf_et = self._load_swmm('evap')

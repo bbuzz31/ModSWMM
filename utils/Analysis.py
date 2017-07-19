@@ -768,7 +768,7 @@ class methods(res_base):
     # this shouldn't be monthly
     def plot_theta_wc(self):
         """ Compare theta and water content from UZF gage; should be same  """
-        print 'SHOULD NOT BE USING MONTHLY MEANS FOR THIS'
+        print ('SHOULD NOT BE USING MONTHLY MEANS FOR THIS')
         # this loc only works for first row - still? (05-10??)
         fig, axes   = plt.subplots(ncols=len(self.slr), sharey=True)
         title       = fig.suptitle('UZF Water Content vs SWMM Theta \n Loc: {}'
@@ -829,7 +829,7 @@ class sensitivity(res_base):
         cmp_heads = avg_heads - ss_heads
 
         # note the length is 1459 + 91 CHD cells
-        print pd.DataFrame({'Head_Chg' : cmp_heads.reshape(-1)}).dropna().describe()
+        print (pd.DataFrame({'Head_Chg' : cmp_heads.reshape(-1)}).dropna().describe())
         fig, axes = plt.subplots()
         title     = fig.suptitle ('Yearly Average Transient vs SS Solution')
         im        = axes.imshow(cmp_heads, cmap=plt.cm.jet)
@@ -848,7 +848,7 @@ class sensitivity(res_base):
                                             len(self.ts_hr), -1), 1)
         df_run     = pd.DataFrame({'run': arr_run}, index=self.ts_hr).resample('D').sum()
         df_run['leak'] = arr_leak
-        print df_run[df_run['leak'] == 0]
+        print (df_run[df_run['leak'] == 0])
 
 def rc_params():
     mpl.rcParams['figure.figsize']   = (16, 9)
@@ -910,3 +910,7 @@ def make_plots():
 
 # plt.style.use('seaborn-whitegrid')
 # make_plots()
+PATH_res  = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_Default')
+
+methods(PATH_res).plot_heads_1loc()
+plt.show()

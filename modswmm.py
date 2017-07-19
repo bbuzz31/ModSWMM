@@ -207,7 +207,7 @@ class RunSim(object):
 
         swmm.initialize(op.join(self.init.path_child, 'SWMM', NAME_swmm))
 
-        # idea is run day 0 mf steady state, then day 1 of swmm; 1 of MF, 2 SWMM
+        # run day 0 mf steady state, then day 1 of swmm; 1 of MF, 2 SWMM ...
         for STEP_mf in range(1, self.init.days+1):
             last_step = True if STEP_mf == (STEPS_mf - 1) else False
 
@@ -215,7 +215,8 @@ class RunSim(object):
             if not last_step:
                 self._debug('new', STEP_mf, v)
                 self._debug('from_swmm', STEP_mf, v)
-                self._debug('swmm_run', STEP_mf, v)
+                self._debug('swmm_run', STEP_mf, v, path_root=self.init.path_child)
+
                 for_mf  = bcpl.swmm_get_all(sub_ids, self.gridsize)
 
             else:
@@ -233,7 +234,7 @@ class RunSim(object):
             bcpl.StepDone(self.init.path_child, STEP_mf, v).swmm_is_done()
 
             ### MF step is runnning
-            self._debug('mf_run', STEP_mf, v)
+            self._debug('mf_run', STEP_mf, v, path_root=self.init.path_child)
             bcpl.StepDone(self.init.path_child, STEP_mf, v).mf_is_done()
             self._debug('for_swmm', STEP_mf, v)
 
@@ -273,8 +274,9 @@ class RunSim(object):
             message.extend(['FINF & PET {} arrays written to: {}'.format(tstep+1,
                                               op.join(path_root, 'mf', 'ext'))])
         if 'mf_run' in steps:
-            message.extend(['', 'Waiting for MODFLOW Day {} (Trans: {})'.format(
-                                                                tstep+1, tstep)])
+            message.extend(['', 'SLR: {} waiting for MODFLOW Day {} (Trans: {})'
+                                .format(op.basename(path_root).split('_')[1],
+                                                            tstep+1, tstep)])
         if 'mf_done' in steps:
             message.extend(['---MF has finished.---',
                                         '---Calculating final SWMM steps.---'])
@@ -287,7 +289,8 @@ class RunSim(object):
         if 'set_swmm' in steps:
             message.extend(['', 'Setting SWMM values for new SWMM day: {}'.format(tstep + 1)])
         if 'swmm_run' in steps:
-            message.extend(['', 'Waiting for SWMM Day: {}'.format(tstep)])
+            message.extend(['', 'SLR: {} waiting for SWMM Day: {}'.format(
+                                 op.basename(path_root).split('_')[1], tstep)])
         if 'swmm_done' in steps:
             message.extend(['', '  *** SIMULATION HAS FINISHED ***','  Runoff Error: {}'.format(errs[0]),
                                 '  Flow Routing Error: {}'.format(errs[1]),

@@ -10,7 +10,9 @@ from utils.AnalysisObjs import *
 
 def run_summary():
     summary_obj = summary(PATH_res)
-    summary_obj.plot_ts_uzf_sums()
+    # summary_obj.plot_ts_uzf_sums()
+    # for discussion; untruncated init conditions
+    summary_obj.untruncated()
     # summary_obj.plot_hypsometry()
     # summary_obj.plot_hist_head()
     # summary_obj.plot_land_z()     # not used
@@ -37,7 +39,8 @@ def run_sensitivity():
 PATH_res  = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_Default')
 
 run_summary()
-run_dtw()
-run_runoff()
-# savefigs(PATH_res)
+# run_dtw()
+# run_runoff()
+# run_sensitivity()
+savefigs(PATH_res)
 plt.show()
