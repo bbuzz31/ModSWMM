@@ -2,6 +2,8 @@
 AnalysisObjs3.py
 Refactored 05.21.17
 """
+from __future__ import print_function
+
 import BB
 import os
 import os.path as op
@@ -131,7 +133,7 @@ class res_base(object):
             df_wc.index = df_wc['Time_{}'.format(slr)].apply(lambda x:
                                            self.ts_day[0] + timedelta(days=x-1))
             df_wc.drop('Time_{}'.format(slr), 1, inplace=True)
-            # print self.ts[0] + timedelta(days=1)
+            # print (self.ts[0] + timedelta(days=1))
             df_all = pd.merge(df_all, df_wc, left_index=True, right_index=True, how='left')
         return df_all
 
@@ -278,11 +280,8 @@ class summary(res_base):
             for slr in self.slr:
                 arr_sum = arr[slr].reshape(len(self.ts_day),-1).sum(1)
                 df_sums['{}_{}'.format(self.var_map[name], slr)] = arr_sum
-        df_sums.plot()
-        return
         # truncate init conditions and resample to monthly
         df_mon   = abs(df_sums).loc[self.st:self.end, :].resample('MS').mean()
-
         if not smooth:
             return df_mon
 
@@ -297,7 +296,7 @@ class summary(res_base):
         Plot Sum of Recharge, ET, at all locs, each step, monthly mean
         PLot Precipation
         """
-        df_mon   = self.ts_uzf_sums(untruncate)
+        df_mon   = self.ts_uzf_sums()
         fig      = plt.figure()
         axe      = []
         gs       = gridspec.GridSpec(3, 2)
@@ -457,7 +456,7 @@ class summary(res_base):
         geo_df                  = geopandas.GeoDataFrame(df_heads, geometry='geom')
         shpfile                 = op.join(self.path_gis, shpname)
         geo_df.to_file(shpfile, driver='ESRI Shapefile')
-        print 'Head ShapeFile Written: {}'.format(shpfile)
+        print ('Head ShapeFile Written: {}'.format(shpfile))
 
         return df_heads
 
@@ -588,7 +587,7 @@ class runoff(res_base):
         df['geom']  = df.apply(lambda x: Point((float(x.POINT_X), float(x.POINT_Y))), axis=1)
         geo_df      = geopandas.GeoDataFrame(df, geometry='geom')
         geo_df.to_file(op.join(self.path_gis, 'Runoff_Chg.shp'), driver='ESRI Shapefile')
-        print 'Runoff ShapeFile Written: {}'.format(op.join(self.path_gis, 'Runoff_Chg.shp'))
+        print ('Runoff ShapeFile Written: {}'.format(op.join(self.path_gis, 'Runoff_Chg.shp')))
 
     def plot_area_vol(self):
         """ Plot area vs hours, curves of SLR, subplots of rates """
@@ -636,7 +635,7 @@ class dtw(res_base):
 
         # pickle converted this to a year
         self.df_year  = pd.read_pickle(op.join(self.path_picks, 'dtw_yr.df'))
-        # print self.df_year.head()
+        # print (self.df_year.head())
         self.df_area  = pd.read_pickle(op.join(self.path_picks, 'percent_at_surface.df'))#.loc['2011-12-01-00':, :]
         self.dtws     = BB.uniq([float(dtw.split('_')[1]) for dtw in self.df_area.columns])
 
@@ -781,12 +780,12 @@ class dtw(res_base):
         df          = pd.concat([df_interest, df_xy], axis=1)
 
         df.columns  = [str(col).replace('.', '_') for col in df.columns]
-        # print df.loc['Zone', 1553]
+        # print (df.loc['Zone', 1553])
 
         df['geom']  = df.apply(lambda x: Point((float(x.POINT_X), float(x.POINT_Y))), axis=1)
         geo_df      = geopandas.GeoDataFrame(df, geometry='geom')
         geo_df.to_file(op.join(self.path_gis, 'DTW_Chg.shp'), driver='ESRI Shapefile')
-        print 'DTW ShapeFile Written: {}'.format(op.join(self.path_gis, 'DTW_Chg.shp'))
+        print ('DTW ShapeFile Written: {}'.format(op.join(self.path_gis, 'DTW_Chg.shp')))
         return geo_df
 
 class sensitivity(res_base):
@@ -795,7 +794,7 @@ class sensitivity(res_base):
         self.results = self._get_all_res()
 
     def totals(self, var='run'):
-        """ Total Runoff for Whole Year """
+        """ Total Var for Whole Year """
         ### get this going for all 3 variables, subplot for each? might be too cluttered
         # will have to set up some conversions
         var_map   = {'run' : 'Runoff Rate (CMS)',
@@ -831,18 +830,15 @@ class sensitivity(res_base):
                 marker = markers[i]
             jitter_x = self._rand_jitter(self.slr)
             jitter_y = self._rand_jitter(y)
-            axes.scatter(jitter_x, jitter_y, label=ID, marker=marker, s=90)
+            axes.scatter(jitter_x, jitter_y, label=ID, marker=marker, s=45)
 
-        axes.legend(loc='best', frameon=True, shadow=True, facecolor='w',
-                                                                numpoints=1)
+        axes.legend(frameon=True, shadow=True, facecolor='w',numpoints=1,
+                                                    bbox_to_anchor=(1.1, 1.00))
         axes.set_ylabel(var_map[var])
         axes.set_xlabel('SLR (m)')
         axes.set_xticks([float(slr) for slr in self.slr])
         axes.xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
         axes.yaxis.grid(True)
-
-        axes.legend(bbox_to_anchor=(1.1, 1.00))
-
         fig.set_label('{}_sensitivity'.format(var))
 
         # just to have
@@ -863,7 +859,7 @@ class sensitivity(res_base):
 
     def _rand_jitter(self, arr):
         """ Use to jitter plot markers so they can all be seen """
-        stdev = .02*(max(arr)-min(arr))
+        stdev = .05*(max(arr)-min(arr))
         return arr + np.random.randn(len(arr)) * stdev
 
 def set_rc_params():
@@ -884,7 +880,7 @@ def set_rc_params():
     # mpl.rcParams['figure.figsize'] = (18, 12) # for saving
     # matplotlib.rcParams['axes.labelweight'] = 'bold'
     for param in mpl.rcParams.keys():
-        # print param
+        # print (param)
         pass
 
 def savefigs(path):
@@ -894,8 +890,8 @@ def savefigs(path):
     figs = list(map(plt.figure, plt.get_fignums()))
     for fig in figs:
         mpl.rcParams['figure.figsize']   = (18, 12) # figure out a way to make this work
-        print op.join(path_fig, fig.get_label())
+        print (op.join(path_fig, fig.get_label()))
         fig.savefig(op.join(path_fig, fig.get_label()), dpi=300)
-    print 'Fig(s) Saved'
+    print ('Fig(s) Saved')
 
 set_rc_params()
