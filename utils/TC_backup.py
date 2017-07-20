@@ -4,46 +4,61 @@
 Backup Pickles and Coupled File to Time Capsule
 
 Usage:
-  TC_backup.py PATH_SRC
+  TC_backup.py PATH_DEST
 
 Arguments:
-  PATH_SRC  Results_MMDD Directory to move to Time Capsule
+  PATH_DEST  Time Capsule Thesis_Backups Directoy
+
+Examples:
+  Call from script:
+  TC_backup.py /Volumes/BB_Cap/Thesis_Backups
+
+  Call from terminal:
+  TC_backup.py .
+
+Notes:
+  The path to the TimeCapsule may be messed up.
+  Better to call this from terminal.
 """
 
+from __future__ import print_function
 import os
 import os.path as op
-import shutil
+import tarfile
 
 from docopt import docopt
 from schema import Schema, Use
 
-def move(path_src):
-    date         = op.basename(path_src).split('_')[1]
-    path_pickles = op.join(path_src, 'Pickles')
-    path_log     = op.join(path_src, 'SLR-0.0_{}'.format(date),
-                                     'Coupled_{}.log'.format(date))
-    path_dest    = op.join('/', 'Volumes', 'BB_Cap', 'Thesis_Backups', date)
-    if not op.isdir(path_dest):
-        os.makedirs(path_dest)
-    try:
-        shutil.copy(path_log, op.join(path_dest, op.basename(path_log)))
-        print "Backed up Log"
-    except:
-        print "Log not found. Check Dates of SLR Dirs"
+def make_tarfile(output_dest, source_dir):
+    with tarfile.open('{}.tar.gz'.format(output_dest), "w:gz") as tar:
+        tar.add(source_dir, arcname=os.path.basename(source_dir))
 
-    try:
-        shutil.copy(op.join(op.dirname(path_src), 'README'), op.join(path_dest, 'README'))
-        print 'README Overwritten'
-    except:
-        print 'README Not Updated'
+def main(path_dest):
+    PATH_src    = op.join('/', 'Volumes', 'BB_4TB', 'Thesis')
+    if not op.exists(PATH_src):
+        raise OSError ('Path to Source Incorrect')
 
-    shutil.copytree(path_pickles, op.join(path_dest, 'Pickles'))
-    print "Backed up Pickles"
+    # get list of folders that are already backed up
+    exists_full = os.listdir(path_dest)
+    # strip off the ending for comparison
+    exists      = [dirs.split('.')[0] for dirs in exists_full
+                                      if dirs.endswith('tar.gz')]
+    # make only the directories not already existing
+    for d in os.listdir(PATH_src):
+        d_full = op.join(PATH_src, d)
+        # only copy over directories
+        if not op.isdir(d_full):
+            continue
+        if not d in exists:
+            make_tarfile(op.join(path_dest, d), d_full)
+        else:
+            print (d, 'already exists, skipping...')
+
 
 
 if __name__ == '__main__':
     arguments   = docopt(__doc__)
-    typecheck   = Schema({'PATH_SRC' : os.path.exists}, ignore_extra_keys=True)
-    PATH_SRC    = op.abspath(typecheck.validate(arguments)['PATH_SRC'])
+    typecheck   = Schema({'PATH_DEST' : os.path.exists}, ignore_extra_keys=True)
+    PATH_tcap   = op.abspath(typecheck.validate(arguments)['PATH_DEST'])
 
-    move(PATH_SRC)
+    main(PATH_tcap)

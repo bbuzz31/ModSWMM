@@ -1,5 +1,5 @@
 """ wncSWMM Classes """
-
+from __future__ import print_function
 import BB
 import os
 import os.path as op
@@ -11,9 +11,9 @@ from swmmPUT import *
 import bcpl
 
 class WNC_Base(object):
-    def __init__(self, path_root, **params):
-        self.path      = path_root
-        self.path_data = op.join(self.path, 'Data')
+    def __init__(self, path_child, **params):
+        self.path      = path_child
+        self.path_data = op.join(op.dirname(op.dirname(self.path)), 'Data')
         self.params    = params
         _              = self.swmm_load()
         __             = self.mf_load()
@@ -99,13 +99,13 @@ class WNC_SWMM_Inps(WNC_Base):
 
         ### SUBCATCHMENTS
         sub.df['Outlet']    = self.df_subs.Outlet.astype(int)
-        sub.df['perImperv'] = self.df_subs.perImperv
+        sub.df['perImperv'] = self.df_subs.perImperv * self.params.get('perImperv_factor', 1)
         sub.df['perSlope']  = self.df_subs.perSlope
         sub = sub.final()
 
         ### SUBAREAS
-        area.df['N-Perv'] =  self.df_subs.N_Perv
-        area.df['S-Perv'] =  self.df_subs.S_Perv
+        area.df['N-Perv'] =  self.df_subs.N_Perv * self.params.get('N-Perv_factor', 1)
+        area.df['S-Perv'] =  self.df_subs.S_Perv * self.params.get('S-Perv_factor', 1)
         area = area.final()
 
         ### INFILATRATION
@@ -180,12 +180,12 @@ class WNC_SWMM_Inps(WNC_Base):
             raise TypeError('Must pass a list of swmmput objects')
 
         if self.params.get('Verbose'):
-            print '  ***********************************', \
-                  '\n  SWMM Input File Created at: ', \
-                  '\n  ...',"/".join(BB.splitall(inp_file)[-4:]), \
-                  '\n  SWMM Time Step:', tstep, '(hr:min:sec)', \
-                  '\n  SWMM simulation length:', swmm_days, 'days', \
-                  '\n  ***********************************\n'
+            print ('  ***********************************',
+                  '\n  SWMM Input File Created at: ',
+                  '\n  ...',"/".join(BB.splitall(inp_file)[-4:]),
+                  '\n  SWMM Time Step:', tstep, '(hr:min:sec)',
+                  '\n  SWMM simulation length:', swmm_days, 'days',
+                  '\n  ***********************************\n')
 
 def main(path_root, write=True, **params):
     ## will need all the params from Coupled.py
@@ -193,4 +193,4 @@ def main(path_root, write=True, **params):
     if write:
         wnc_obj.swmm_write()
     else:
-        print wnc_obj.swmm_objs()[0]
+        print (wnc_obj.swmm_objs()[0])
