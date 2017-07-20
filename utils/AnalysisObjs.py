@@ -5,6 +5,7 @@ Refactored 05.21.17
 import BB
 import os
 import os.path as op
+import swmmtoolbox as swmtbx
 from components import bcpl
 
 from collections import OrderedDict
@@ -16,6 +17,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import FormatStrFormatter
+from cycler import cycler
 
 import geopandas
 import shapely
@@ -477,6 +479,52 @@ class summary(res_base):
         axes.set_xlabel('Time (days)')
         axes.set_ylabel('GW Head')
         fig.set_label('untruncated_head')
+
+    def plot_heads_1loc(self):
+        """ Compare heads at SWMM & MF for 2 SLR Scenarios """
+        arr_mf   = self._load_fhd()[self.slr[0]][:, self.row, self.col][:-1]
+        df_heads = pd.DataFrame({'MF_{}'.format(self.slr[0]) :arr_mf}, index=self.ts_day)
+        ### SWMM
+        df_heads['SWMM_{}'.format(self.slr[0])]  = self.ts_all('head', self.loc_1d,
+                                      slr=self.slr[0]).resample('D').first().values
+
+        # add land surface elevation
+        df_heads['Land_Surface'] = [np.load(op.join(self.path_data, 'Land_Z.npy'))
+                             .reshape(74, 51)[self.row, self.col]] * len(df_heads)
+
+        # fig, axes = plt.subplots(figsize=(16,9), nrows=2)
+        fig  = plt.figure()
+        gs   = gridspec.GridSpec(2, 1,
+                       width_ratios=[1],
+                       height_ratios=[2,1]
+                       )
+        axe   = []
+
+        axe.append(fig.add_subplot(gs[0]))
+        axe.append(fig.add_subplot(gs[1]))
+
+        # title = fig.suptitle('Comparisons of Heads: Row {}, Col {}'.format(self.row+1, self.col+1))
+        df_heads.plot(ax=axe[0], grid=True, sharex=True)
+        axe[0].set_ylabel('GW Head (m)')
+        axe[0].tick_params(labelsize='14')
+        axe[0].set_ylim(3.85, 4.075)
+        axe[0].legend(loc='lower left')#, bbox_to_anchor=(0.0, 1.075))
+
+        # secondary plot of surface leakage
+        arr_leak = self._load_uzf()['surf_leak'][self.slr[0]][:, self.row, self.col]
+        df_leak  = pd.DataFrame({'Surface Leakage':arr_leak}, index=self.ts_day)
+        # df_leak  = df_leak.loc['2011-12-01':, :]
+        df_leak.plot(ax=axe[1], legend=False)#, title='Surface Leakage')
+        axe[1].set_ylabel('Vol (cubic meters)')
+        axe[1].tick_params(labelsize='14')
+        axe[1].xaxis.set_major_locator(mpl.dates.MonthLocator())
+        axe[1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
+        for label in axe[1].get_xticklabels():
+             label.set_ha('center')
+             label.set_rotation(20.)
+
+        fig.set_label('comparison_of_heads')
+
     def _total_et(self):
         """ Sum UZF evap and Surf Evap. Requires SWMM Evap Grid Pickled. """
         dict_surf_et = self._load_swmm('evap')
@@ -740,6 +788,83 @@ class dtw(res_base):
         geo_df.to_file(op.join(self.path_gis, 'DTW_Chg.shp'), driver='ESRI Shapefile')
         print 'DTW ShapeFile Written: {}'.format(op.join(self.path_gis, 'DTW_Chg.shp'))
         return geo_df
+
+class sensitivity(res_base):
+    def __init__(self, path_res):
+        super(sensitivity, self).__init__(path_res)
+        self.results = self._get_all_res()
+
+    def totals(self, var='run'):
+        """ Total Runoff for Whole Year """
+        ### get this going for all 3 variables, subplot for each? might be too cluttered
+        # will have to set up some conversions
+        var_map   = {'run' : 'Runoff Rate (CMS)',
+                     'inf' : 'Infiltration Rate (m/d)',
+                    'evap' : 'Evaporation Volume (CM)'}
+        ids = []
+        arr_all   = np.ones([len(self.slr_sh), len(self.results)])
+        markers   = [".",",","o","v","^","<",">","1","2","3","4","8","s","p",
+                    "h","H","+","D","d","|","_",".",",","o","v","^","<",
+                    ">","1","2","3","4","8","s","p","h","H","+","D","d",
+                    "|","_"]
+        cm = plt.get_cmap('gist_rainbow')
+
+        fig, axes = plt.subplots()
+        # cycle colors for this plot
+        axes.set_prop_cycle(cycler('color', [cm(1.*i/len(self.results)) for
+                                                i in range(len(self.results))]))
+
+        for i, (ID, resdir) in enumerate(self.results.items()):
+            dict_var = self._load_swmm(var, path=resdir)
+            y        = []
+            colors   = []
+
+            # store sums and plot i times only;
+            # use slr to maintain order
+            for j, slr in enumerate(self.slr):
+                y.append(np.nansum(dict_var[str(slr)][3696:-698, :, :]))
+                arr_all[j, i] = y[-1]
+            ids.append(ID)
+            if ID == "Default":
+                marker = '*'
+            else:
+                marker = markers[i]
+            jitter_x = self._rand_jitter(self.slr)
+            jitter_y = self._rand_jitter(y)
+            axes.scatter(jitter_x, jitter_y, label=ID, marker=marker, s=40)
+
+        axes.legend(loc='best', frameon=True, shadow=True, facecolor='w',
+                                                                numpoints=1)
+        axes.set_ylabel(var_map[var])
+        axes.set_xlabel('SLR (m)')
+        axes.set_xticks([float(slr) for slr in self.slr])
+        axes.xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
+        axes.yaxis.grid(True)
+
+        axes.legend(bbox_to_anchor=(1.1, 1.00))
+
+        fig.set_label('{}_sensitivity'.format(var))
+
+        df_all = pd.DataFrame(arr_all, index=self.slr, columns=ids)
+
+        print df_all.head()
+        return df_all
+
+    def _get_all_res(self):
+        """ Get Paths to all Result Directories """
+        path_parent   = op.dirname(self.path)
+        res_dict      = OrderedDict()
+        for resdir in os.listdir(path_parent):
+            if resdir.startswith('Results_'):
+                res_id       = resdir.split('_')[1]
+                path_pickdir = op.join(path_parent, resdir, 'Pickles')
+                res_dict[res_id] = path_pickdir
+        return res_dict
+
+    def _rand_jitter(self, arr):
+        """ Use to jitter plot markers so they can all be seen """
+        stdev = .02*(max(arr)-min(arr))
+        return arr + np.random.randn(len(arr)) * stdev
 
 def set_rc_params():
     plt.style.use('seaborn')

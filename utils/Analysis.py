@@ -1,6 +1,7 @@
 """
 AnalysisObjs2.py
 Refactored 05-05
+I THINK DEPRECATED IN FAVOR OF ANALYSISOBJS; BB - 07/20/17
 """
 import BB
 import os
@@ -737,9 +738,6 @@ class methods(res_base):
         # add land surface elevation
         df_heads['Land_Surface'] = [np.load(op.join(self.path_data, 'Land_Z.npy'))
                              .reshape(74, 51)[self.row, self.col]] * len(df_heads)
-
-        # start at Nov
-        # df_heads = df_heads.loc['2011-12-01':, :]
 
         # fig, axes = plt.subplots(figsize=(16,9), nrows=2)
         fig  = plt.figure()
