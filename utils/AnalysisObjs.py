@@ -807,7 +807,7 @@ class sensitivity(res_base):
                     "h","H","+","D","d","|","_",".",",","o","v","^","<",
                     ">","1","2","3","4","8","s","p","h","H","+","D","d",
                     "|","_"]
-        cm = plt.get_cmap('gist_rainbow')
+        cm = plt.get_cmap('hsv')
 
         fig, axes = plt.subplots()
         # cycle colors for this plot
@@ -831,7 +831,7 @@ class sensitivity(res_base):
                 marker = markers[i]
             jitter_x = self._rand_jitter(self.slr)
             jitter_y = self._rand_jitter(y)
-            axes.scatter(jitter_x, jitter_y, label=ID, marker=marker, s=40)
+            axes.scatter(jitter_x, jitter_y, label=ID, marker=marker, s=90)
 
         axes.legend(loc='best', frameon=True, shadow=True, facecolor='w',
                                                                 numpoints=1)
@@ -845,9 +845,9 @@ class sensitivity(res_base):
 
         fig.set_label('{}_sensitivity'.format(var))
 
+        # just to have
         df_all = pd.DataFrame(arr_all, index=self.slr, columns=ids)
 
-        print df_all.head()
         return df_all
 
     def _get_all_res(self):
