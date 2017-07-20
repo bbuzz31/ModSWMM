@@ -15,7 +15,7 @@ class fmt_base(object):
     def __init__(self, path_result):
         self.path       = path_result
         self.path_picks = op.join(self.path, 'Pickles')
-        self.path_data  = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC',
+        self.path_data  = op.join(op.expanduser('~'), 'Google_Drive', 'WNC',
                                                              'Coupled', 'Data')
         self.df_swmm    = pd.read_csv(op.join(self.path_data, 'SWMM_subs.csv'),
                                                           index_col='Zone')
@@ -196,7 +196,7 @@ def fmt_slr():
     Each table is a NOAA SLR-Viewer scenario intersected with grid.
     Table contains only the cells affected for each SLR scenario, w/ dupes.
     """
-    PATH_home = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC')
+    PATH_home = op.join(op.expanduser('~'), 'Google_Drive', 'WNC')
     PATH_data = op.join(PATH_home, 'Coupled', time.strftime('%b'), 'Data')
     PATH_noaa = op.join(PATH_data, 'slr_tables')
     grid      = pd.read_csv(op.join(PATH_data, 'MF_GRID.csv')).rename(

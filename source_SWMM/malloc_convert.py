@@ -5,7 +5,7 @@ import os
 import fileinput
 from BB_PY import BB
 
-path = os.path.join('/', 'Users', 'bb', 'Software_Thesis', 'SWMM', 'swmm_engine',
+path = os.path.join(op.expanduser('~'), 'Software_Thesis', 'SWMM', 'swmm_engine',
                     'source5_1_011')
 
 filelist = BB.filelist(path, 'c')

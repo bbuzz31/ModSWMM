@@ -1,4 +1,8 @@
-""" Surface Leakage Analysis """
+"""
+Surface Leakage Analysis
+DEPRECATED? (2017-07-20)
+"""
+
 import BB
 import os
 import os.path as op
@@ -15,7 +19,7 @@ class ss_base(object):
     def __init__(self, path_result):
         self.path       = path_result
         self.path_picks = op.join(path_result, 'Pickles')
-        self.path_data  = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC',
+        self.path_data  = op.join(op.expanduser('~'), 'Google_Drive', 'WNC',
                                                            'Coupled', 'Data')
         self.path_fig   = op.join(self.path, 'Figures')
         self.df_swmm    = pd.read_csv(op.join(self.path_data, 'SWMM_subs.csv'),
@@ -368,13 +372,3 @@ class runoff(ss_base):
         df_head = df_ts.filter(like='head').resample('D').mean()
         df_run.plot(ax=axes[0])
         df_head.plot(ax=axes[1])
-
-# plt.style.use('seaborn')
-
-# PATH_ss  = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled', 'May_SS', 'MF')
-# PATH_res = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_05-08')
-# surf_leak(PATH_ss).ss_dtw()
-# surf_leak(PATH_res).plot_2d_leaks_perm()
-# surf_leak(PATH_res).plot_ts_leak_1(0,2)
-# runoff(PATH_res, 18, 28).ts_loc()
-# plt.show()

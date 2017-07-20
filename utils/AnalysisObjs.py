@@ -29,7 +29,7 @@ class res_base(object):
     def __init__(self, path_result):
         self.path       = path_result
         self.path_picks = op.join(path_result, 'Pickles')
-        self.path_data  = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC',
+        self.path_data  = op.join(op.expanduser('~'), 'Google_Drive', 'WNC',
                                                            'Coupled', 'Data')
         self.path_fig   = op.join(self.path, 'Figures')
         self.path_gis   = op.join(op.expanduser('~'), 'Dropbox', 'win_gis')

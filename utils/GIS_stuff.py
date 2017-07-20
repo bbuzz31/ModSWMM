@@ -99,6 +99,6 @@ class XY(object):
         self.df_to_shppt(df_join)
 
 
-PATH   = op.join('/', 'Users', 'bb', 'Google_Drive', 'WNC', 'Coupled')
+PATH   = op.join(op.expanduser('~'), 'Google_Drive', 'WNC', 'Coupled')
 XY(PATH).grid_top_active()
 # xy_obj = XY(PATH).df_to_shppt()
