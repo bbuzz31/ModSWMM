@@ -789,8 +789,8 @@ class dtw(res_base):
         return geo_df
 
 class sensitivity(res_base):
-    def __init__(self, path_res):
-        super(sensitivity, self).__init__(path_res)
+    def __init__(self, path_result):
+        super(sensitivity, self).__init__(path_result)
         self.results = self._get_all_res()
 
     def totals(self, var='run'):
@@ -810,14 +810,14 @@ class sensitivity(res_base):
 
         fig, axes = plt.subplots()
         # cycle colors for this plot
-        axes.set_prop_cycle(cycler('color', [cm(1.*i/len(self.results)) for
-                                                i in range(len(self.results))]))
-
+        colors = [cm(1.*i/len(self.results)) for i in range(len(self.results))]
+        # axes.set_prop_cycle(cycler('color', [cm(1.*i/len(self.results)) for
+        #                                         i in range(len(self.results))]))
+        # color_cycle = axes._get_lines.prop_cycle
+        # print (color_cycle)
         for i, (ID, resdir) in enumerate(self.results.items()):
             dict_var = self._load_swmm(var, path=resdir)
             y        = []
-            colors   = []
-
             # store sums and plot i times only;
             # use slr to maintain order
             for j, slr in enumerate(self.slr):
@@ -825,12 +825,16 @@ class sensitivity(res_base):
                 arr_all[j, i] = y[-1]
             ids.append(ID)
             if ID == "Default":
-                marker = '*'
+                marker    = '*'
+                mark_size = 130
+                color     = 'k'
             else:
                 marker = markers[i]
+                mark_size = 40
+                color = colors[i]
             jitter_x = self._rand_jitter(self.slr)
             jitter_y = self._rand_jitter(y)
-            axes.scatter(jitter_x, jitter_y, label=ID, marker=marker, s=45)
+            axes.scatter(jitter_x, jitter_y, label=ID, color=color, marker=marker, s=mark_size)
 
         axes.legend(frameon=True, shadow=True, facecolor='w',numpoints=1,
                                                     bbox_to_anchor=(1.1, 1.00))
