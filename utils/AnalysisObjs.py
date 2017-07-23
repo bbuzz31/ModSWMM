@@ -460,25 +460,6 @@ class summary(res_base):
 
         return df_heads
 
-    def untruncated(self):
-        """
-        Plot ts of untrucated head at one loc to show effects of init conditions
-        """
-        arr_mf    = self._load_fhd()[self.slr[0]][:, self.row, self.col][:-1]
-        df_heads  = pd.DataFrame({'MF_{}'.format(self.slr[0]) :arr_mf}, index=self.ts_day)
-        fig, axes = plt.subplots()
-        df_heads.plot(ax=axes, legend=False)
-        axes.yaxis.grid(True)
-        axes.xaxis.set_major_locator(mpl.dates.MonthLocator())
-        axes.xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
-        # do this instead of using autofmt (Gridspec)
-        for label in axes.get_xticklabels():
-             label.set_ha('center')
-             label.set_rotation(20.)
-        axes.set_xlabel('Time (days)')
-        axes.set_ylabel('GW Head')
-        fig.set_label('untruncated_head')
-
     def plot_heads_1loc(self):
         """ Compare heads at SWMM & MF for 2 SLR Scenarios """
         arr_mf   = self._load_fhd()[self.slr[0]][:, self.row, self.col][:-1]
@@ -523,6 +504,28 @@ class summary(res_base):
              label.set_rotation(20.)
 
         fig.set_label('comparison_of_heads')
+
+    def untruncated(self, row='', col=''):
+        """
+        Plot ts of untrucated head at one loc to show effects of init conditions
+        """
+        if not row or not col:
+            row=self.row; col=self.col
+
+        arr_mf    = self._load_fhd()[self.slr[0]][:, row, col][:-1]
+        df_heads  = pd.DataFrame({'MF_{}'.format(self.slr[0]) :arr_mf}, index=self.ts_day)
+        fig, axes = plt.subplots()
+        df_heads.plot(ax=axes, legend=False)
+        axes.yaxis.grid(True)
+        axes.xaxis.set_major_locator(mpl.dates.MonthLocator())
+        axes.xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
+        # do this instead of using autofmt (Gridspec)
+        for label in axes.get_xticklabels():
+             label.set_ha('center')
+             label.set_rotation(20.)
+        axes.set_xlabel('Time (days)')
+        axes.set_ylabel('GW Head')
+        fig.set_label('untruncated_head')
 
     def _total_et(self):
         """ Sum UZF evap and Surf Evap. Requires SWMM Evap Grid Pickled. """
@@ -840,6 +843,7 @@ class sensitivity(res_base):
                                                     bbox_to_anchor=(1.1, 1.00))
         axes.set_ylabel(var_map[var])
         axes.set_xlabel('SLR (m)')
+        axes.tick_params(labelsize='14')
         axes.set_xticks([float(slr) for slr in self.slr])
         axes.xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
         axes.yaxis.grid(True)
@@ -856,6 +860,8 @@ class sensitivity(res_base):
         res_dict      = OrderedDict()
         for resdir in os.listdir(path_parent):
             if resdir.startswith('Results_'):
+                if resdir.startswith('Results_S8'):
+                    continue;
                 res_id       = resdir.split('_')[1]
                 path_pickdir = op.join(path_parent, resdir, 'Pickles')
                 res_dict[res_id] = path_pickdir
