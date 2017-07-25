@@ -102,7 +102,7 @@ class InitSim(object):
                ('Width', 200), ('perImperv_factor', 1),
                # SUBAREAS
                ('N-Imperv', 0.011), ('N-Perv_factor', 1),
-               ('S-Imperv', 0.05), ('S-Perv_factor', 1),
+               ('S-Imperv', 0.05), ('S-Perv_factor', 2),
                # INFILTRATION
                ('MaxRate', 50), ('MaxInfil', 0),# ('MinRate', 0.635),
                ('Decay', 4), ('DryTime', 7),
