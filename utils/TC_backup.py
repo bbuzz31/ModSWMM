@@ -7,7 +7,7 @@ Usage:
   TC_backup.py PATH_DEST
 
 Arguments:
-  PATH_DEST  Time Capsule Thesis_Backups Directoy
+  PATH_DEST  Time_Capsule/Thesis_Backups 
 
 Examples:
   Call from script:

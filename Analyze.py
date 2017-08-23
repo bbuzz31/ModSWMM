@@ -34,14 +34,17 @@ def run_runoff():
 
 def run_sensitivity():
     sensitivityObj = sensitivity(PATH_res)
-    sensitivityObj.totals('inf')
-    sensitivityObj.totals('evap')
+    # sensitivityObj.totals('inf')
+    # sensitivityObj.totals('evap')
+    sensitivityObj.compare()
+    sensitivityObj.chg_runoff() 
 
 PATH_res  = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_Default')
+PATH_sens = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_S4H')
 
 # run_summary()
 # run_dtw()
 # run_runoff()
-# run_sensitivity()
-# savefigs(PATH_res)
+run_sensitivity()
+savefigs(PATH_sens)
 plt.show()
