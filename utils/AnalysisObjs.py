@@ -558,20 +558,25 @@ class runoff(res_base):
         self.df_area = pd.read_pickle(op.join(self.path_picks, 'percent_vols.df'))
         self.vols    = BB.uniq([float(vol.split('_')[1]) for vol in self.df_area.columns])
         self.dict    = self._load_swmm('run')
+        self.df_run  = (self.df_sys.filter(like='Runoff').resample('MS').mean()
+                                                    .loc[self.st:self.end, :])
 
-    def plot_ts_total(self):
+    def plot_ts_total(self, df_run=False):
         """ Monthly Times series of Total System Runoff """
-        df_run    = self.df_sys.filter(like='Runoff').resample('MS').mean().loc[self.st:self.end, :]
+        if df_run.empty:
+            df_run = self.df_run
         fig, axes = plt.subplots()
         colnames  = ['SLR: {} m'.format(c.split('_')[-1]) for c in df_run.columns]
         df_run.columns = colnames
         # could probably change global alpha and color cycles
-        df_run.plot.bar(ax=axes, color=['darkblue', 'darkgreen', 'darkred'], alpha=0.75)
+        df_run.plot.bar(ax=axes, color=self.colors, alpha=0.75)
         axes.set_xticklabels(df_run.index.map(lambda t: t.strftime('%b')))
         axes.legend(loc='upper left', frameon=True, shadow=True, facecolor='w')
         axes.set_xlabel('Time', size=18)
-        axes.set_ylabel('Runoff Rate (CMS)', size=18)
+        # axes.set_ylabel('Runoff Rate (CMS)', size=18)
+        axes.set_ylabel('% Change', size=18)
         axes.yaxis.grid(True)
+        # axes.yaxis.set_ticks(np.arange(0, 25, 2.5))
 
         fig.autofmt_xdate(bottom=0.2, rotation=20, ha='center')
         fig.set_label('total_monthly_runoff')
@@ -607,7 +612,7 @@ class runoff(res_base):
                 df_days.loc[area, :] = (df_area_one>=area).sum()
 
             df_days.plot(ax=axe[i], title='Depth >= {} mm'.format(vol),
-                         color=['darkblue', 'darkgreen', 'darkred'], alpha=0.5)
+                         color=self.colors, alpha=0.5)
 
             axe[i].set_xlabel('% Area')
             axe[i].set_ylabel('Hours')
@@ -736,6 +741,9 @@ class dtw(res_base):
         return df_inter
 
     def plot_interesting(self, maxchg=-10, maxdtw=30.48):
+        """
+        Create a spatial map of residential/wetland locations with maxchg/maxdtw
+        """
         df_inter         = self.interesting()
         for i in range(len(self.slr_sh) - 1):
             slr_low      = float(self.slr_sh[i])
@@ -792,9 +800,10 @@ class dtw(res_base):
         return geo_df
 
 class sensitivity(res_base):
-    def __init__(self, path_result):
+    def __init__(self, path_result, sens='S4L'):
         super(sensitivity, self).__init__(path_result)
         self.results = self._get_all_res()
+        self.path_sens = op.join(op.dirname(self.path), 'Results_{}'.format(sens))
 
     def totals(self, var='run'):
         """ Total Var for Whole Year """
@@ -854,14 +863,26 @@ class sensitivity(res_base):
 
         return df_all
 
+    def compare(self):
+        """ Compare Default DTW and RUNOFF plots to a sensitivity plot """
+        dtw(self.path_sens).plot_area_hours()
+        df_runoff_chg = self.chg_runoff()
+        runoff(self.path_sens).plot_ts_total(df_runoff_chg)
+
+    def chg_runoff(self):
+        """ Compute change in runoff from default to sensitivity scenario """
+        runoff_default = runoff(self.path)
+        runoff_sens    = runoff(self.path_sens)
+        df_chg         = abs(((runoff_sens.df_run - runoff_default.df_run) /
+                                                    runoff_sens.df_run) * 100)
+        return df_chg
+
     def _get_all_res(self):
         """ Get Paths to all Result Directories """
         path_parent   = op.dirname(self.path)
         res_dict      = OrderedDict()
         for resdir in os.listdir(path_parent):
             if resdir.startswith('Results_'):
-                if resdir.startswith('Results_S8'):
-                    continue;
                 res_id       = resdir.split('_')[1]
                 path_pickdir = op.join(path_parent, resdir, 'Pickles')
                 res_dict[res_id] = path_pickdir
