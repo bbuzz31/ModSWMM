@@ -14,7 +14,7 @@ class XY(object):
         self.path       = path_coupled
         self.path_data  = op.join(self.path, 'Data')
         path_stor       = op.join('/', 'Volumes', 'BB_4TB', 'Thesis')
-        self.path_res   = op.join(path_stor, 'Results_05-08')
+        self.path_res   = op.join(path_stor, 'Results_Default')
         self.path_picks = op.join(self.path_res, 'Pickles')
 
         self.df_xy      = pd.read_csv(op.join(self.path_data, 'Grid_XY.csv'),
@@ -52,8 +52,8 @@ class XY(object):
             arr_yr           = arr_cln[154:519, :]
             col              = 'SLR_{}-SS'.format(int(slr))
             # store SS and avg transient in data frame
-            df_heads[col]         = arr_cln[0, :]
-            df_heads[col[:-3]]    = arr_cln.mean(0)
+            df_heads[col]       = arr_cln[0, :]
+            df_heads[col[:-3]]  = arr_cln.mean(0)
 
         # add change columns
         df_heads['Chg_1_0']  = df_heads['SLR_1'] - df_heads['SLR_0']
@@ -63,8 +63,6 @@ class XY(object):
         df_heads['Chg_1_0_SS']  = df_heads['SLR_1-SS'] - df_heads['SLR_0-SS']
         df_heads['Chg_2_1_SS']  = df_heads['SLR_2-SS'] - df_heads['SLR_1-SS']
         df_heads['Chg_2_0_SS']  = df_heads['SLR_2-SS'] - df_heads['SLR_0-SS']
-
-
 
         # join to grid
         df_xy_heads = self.df_xy.join(df_heads).drop(['OBJECTID', 'ORIG_FID'], 1)
@@ -96,9 +94,9 @@ class XY(object):
 
         df_join     =  df_ks.join(df_xy_clean)
 
+        print df_join.head()
         self.df_to_shppt(df_join)
 
 
 PATH   = op.join(op.expanduser('~'), 'Google_Drive', 'WNC', 'Coupled')
 XY(PATH).grid_top_active()
-# xy_obj = XY(PATH).df_to_shppt()

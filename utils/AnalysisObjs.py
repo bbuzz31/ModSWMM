@@ -297,7 +297,7 @@ class summary(res_base):
         PLot Precipation
         """
         df_mon   = self.ts_uzf_sums()
-        fig      = plt.figure()
+        fig      = plt.figure(figsize=(24,18))
         axe      = []
         gs       = gridspec.GridSpec(3, 2)
         axe.append(fig.add_subplot(gs[:2, 0]))
@@ -323,17 +323,21 @@ class summary(res_base):
             for label in ax.get_xticklabels():
                  label.set_ha('center')
                  label.set_rotation(20.)
-            ax.legend(loc='upper left', frameon=True, shadow=True, facecolor='w')
+            ax.legend(loc='upper left', frameon=True, shadow=True,
+                      facecolor='w', prop={'size':16})
             ax.set_xlim((df_slr.index[0], df_slr.index[-1]))
             ax.set(title=titles[i])
             ax.yaxis.grid(True)
+            ax.tick_params(axis='both', which='major', labelsize=18)
 
-        axe[0].set_ylabel('Volume for whole model, in cubic meters', labelpad=15)
+        axe[0].set_ylabel('Volume for whole model (m$^3$)', labelpad=15)
         axe[0].set_ylim(10000, 200000)
-        axe[2].set_ylabel('Depth, in millimeters', labelpad=40)
+        axe[2].set_ylabel('Depth (mm)', labelpad=70)
+        axe[2].set_xlabel('2011 - 2012', labelpad=15, fontsize=22)
         plt.setp(axe[1].get_yticklabels(), visible=False)
 
-        gs.update(bottom=0.075, top=0.925, hspace=0.6, wspace=0.15)
+
+        gs.update(bottom=0.095, top=0.955, hspace=0.5, wspace=0.15)
 
         fig.set_label('ts_summary')
 
@@ -394,22 +398,26 @@ class summary(res_base):
             axe[3].plot(x2, y, color=self.colors[i], label=colname)
 
             # axe[i].set_title('SLR: {} m'.format(slr))
-            axe[i].legend(loc='upper right', frameon=True, shadow=True, facecolor='w')
+            axe[i].legend(loc='upper right', frameon=True, shadow=True,
+                          facecolor='w', prop={'size':16})
             axe[i].xaxis.set_ticks(np.linspace(0.0, 9.0, 10.0))
             # axe[i].xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
             axe[i].set_xlim(-0.25, 7.7)
-            axe[0].set_ylabel('Frequency')
+
+        axe[0].set_ylabel('Frequency')
 
         # turn off shared ticks
         plt.setp(axe[1].get_yticklabels(), visible=False)
         plt.setp(axe[2].get_yticklabels(), visible=False)
 
         # bottom subplot properties
-        axe[3].legend(loc='upper right', frameon=True, shadow=True, facecolor='w')
+        axe[3].legend(loc='upper right', frameon=True, shadow=True,
+                                  facecolor='w', prop={'size':16})
+
         axe[3].set_xlabel('GW Head (m)')
         axe[3].set_ylabel('Frequency')
         axe[3].xaxis.set_ticks(np.linspace(0.0, 9.0, 10))
-        axe[3].xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
+        # axe[3].xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
         axe[3].set_xlim(-0.05, 7.7)
         gs.update(bottom=0.1, top=0.95, hspace=0.3, wspace=0.15)
         fig.set_label('hist_head')
@@ -471,6 +479,11 @@ class summary(res_base):
         # add land surface elevation
         df_heads['Land_Surface'] = [np.load(op.join(self.path_data, 'Land_Z.npy'))
                              .reshape(74, 51)[self.row, self.col]] * len(df_heads)
+        ### plotting
+        # fix column names for appearance in legend
+        df_heads.rename(columns={'SWMM_{}'.format(self.slr[0]) : 'SWMM',
+                                 'MF_{}'.format(self.slr[0]) : 'MODFLOW',
+                                 'Land_Surface' : 'Land Surface'}, inplace=True)
 
         # fig, axes = plt.subplots(figsize=(16,9), nrows=2)
         fig  = plt.figure()
@@ -484,25 +497,30 @@ class summary(res_base):
         axe.append(fig.add_subplot(gs[1]))
 
         # title = fig.suptitle('Comparisons of Heads: Row {}, Col {}'.format(self.row+1, self.col+1))
+        df_heads  = df_heads.loc['2011-12-01':, :]
+
         df_heads.plot(ax=axe[0], grid=True, sharex=True)
         axe[0].set_ylabel('GW Head (m)')
-        axe[0].tick_params(labelsize='14')
+        # axe[0].tick_params(labelsize='17')
         axe[0].set_ylim(3.85, 4.075)
-        axe[0].legend(loc='lower left')#, bbox_to_anchor=(0.0, 1.075))
+        axe[0].legend(loc='lower left',frameon=True, shadow=True, facecolor='w',
+                      prop={'size':14})#, bbox_to_anchor=(0.0, 1.075))
 
         # secondary plot of surface leakage
         arr_leak = self._load_uzf()['surf_leak'][self.slr[0]][:, self.row, self.col]
         df_leak  = pd.DataFrame({'Surface Leakage':arr_leak}, index=self.ts_day)
-        # df_leak  = df_leak.loc['2011-12-01':, :]
-        df_leak.plot(ax=axe[1], legend=False)#, title='Surface Leakage')
+        df_leak  = df_leak.loc['2011-12-01':, :]
+        df_leak.plot(ax=axe[1], legend=False, color='darkred', alpha=0.87)#, title='Surface Leakage')
         axe[1].set_ylabel('Vol (cubic meters)')
-        axe[1].tick_params(labelsize='14')
+        # axe[1].tick_params(labelsize='16')
         axe[1].xaxis.set_major_locator(mpl.dates.MonthLocator())
         axe[1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
-        for label in axe[1].get_xticklabels():
-             label.set_ha('center')
-             label.set_rotation(20.)
-
+        axe[1].set_xlabel('Days, 2011-2012')
+        axe[1].legend(loc='lower left',frameon=True, shadow=True, facecolor='w',
+                      prop={'size':14})
+        for i, label in enumerate(axe[1].get_xticklabels()):
+            label.set_ha('center')
+            label.set_rotation(20.)
         fig.set_label('comparison_of_heads')
 
     def untruncated(self, row='', col=''):
@@ -523,8 +541,8 @@ class summary(res_base):
         for label in axes.get_xticklabels():
              label.set_ha('center')
              label.set_rotation(20.)
-        axes.set_xlabel('Time (days)')
-        axes.set_ylabel('GW Head')
+        axes.set_xlabel('2011 - 2012')
+        axes.set_ylabel('GW Head (m)')
         fig.set_label('untruncated_head')
 
     def _total_et(self):
@@ -663,7 +681,8 @@ class dtw(res_base):
             BB.fill_plot(df_hrs, axe[i], title='DTW <= {} m'.format(dtw))
             axe[i].set_xlabel('% Area')
             axe[i].set_ylabel('Hours')
-            axe[i].legend(loc='lower left', frameon=True, shadow=True, facecolor='white')
+            axe[i].legend(loc='lower left', frameon=True, shadow=True,
+                          facecolor='white', prop={'size':16})
             axe[i].set_ylim((0, len(df_area_one)*1.10))
             axe[i].yaxis.grid(True)
         fig.subplots_adjust(left=0.125, right=0.92, wspace=0.175, hspace=0.35)
@@ -802,7 +821,7 @@ class dtw(res_base):
 class sensitivity(res_base):
     def __init__(self, path_result, sens='S4L'):
         super(sensitivity, self).__init__(path_result)
-        self.results = self._get_all_res()
+        self.results = self._get_all_res(testing=True)
         self.path_sens = op.join(op.dirname(self.path), 'Results_{}'.format(sens))
 
     def totals(self, var='run'):
@@ -820,7 +839,7 @@ class sensitivity(res_base):
                     "|","_"]
         cm = plt.get_cmap('hsv')
 
-        fig, axes = plt.subplots()
+        fig, axes = plt.subplots(figsize=(21,12))
         # cycle colors for this plot
         colors = [cm(1.*i/len(self.results)) for i in range(len(self.results))]
         # axes.set_prop_cycle(cycler('color', [cm(1.*i/len(self.results)) for
@@ -857,7 +876,8 @@ class sensitivity(res_base):
         axes.xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
         axes.yaxis.grid(True)
         fig.set_label('{}_sensitivity'.format(var))
-
+        fig.subplots_adjust(top=0.92, bottom=0.08, left=0.10, right=0.95, hspace=0.25,
+                            wspace=0.15)
         # just to have
         df_all = pd.DataFrame(arr_all, index=self.slr, columns=ids)
 
@@ -877,11 +897,13 @@ class sensitivity(res_base):
                                                     runoff_sens.df_run) * 100)
         return df_chg
 
-    def _get_all_res(self):
-        """ Get Paths to all Result Directories """
+    def _get_all_res(self, testing=False):
+        """ Get Paths to all Result Directories; testing to shorten time """
         path_parent   = op.dirname(self.path)
         res_dict      = OrderedDict()
-        for resdir in os.listdir(path_parent):
+        for i, resdir in enumerate(os.listdir(path_parent)):
+            if testing and i > 5:
+                return res_dict
             if resdir.startswith('Results_'):
                 res_id       = resdir.split('_')[1]
                 path_pickdir = op.join(path_parent, resdir, 'Pickles')
@@ -899,12 +921,12 @@ def set_rc_params():
     mpl.rcParams['figure.figsize']   = (16, 9)
     mpl.rcParams['figure.titlesize'] = 18
     mpl.rcParams['axes.grid']        = False
-    mpl.rcParams['axes.titlesize']   = 14
-    mpl.rcParams['axes.labelsize']   = 15
-    mpl.rcParams['axes.labelpad']    = 20
+    mpl.rcParams['axes.titlesize']   = 22
+    mpl.rcParams['axes.labelsize']   = 20
+    mpl.rcParams['axes.labelpad']    = 22
 
-    mpl.rcParams['xtick.labelsize']  = 12.5
-    mpl.rcParams['ytick.labelsize']  = 12.5
+    mpl.rcParams['xtick.labelsize']  = 15
+    mpl.rcParams['ytick.labelsize']  = 15
 
     # mpl.rcParams['savefig.dpi']    = 2000
     mpl.rcParams['savefig.format']   = 'pdf'
