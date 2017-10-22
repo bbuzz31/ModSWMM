@@ -26,18 +26,21 @@ def run_runoff():
     runobj_obj.plot_ts_total()
 
 def run_sensitivity():
-    sensitivityObj = sensitivity(PATH_res)
-    sensitivityObj.totals('inf')
+    sensitivityObj = sensitivity(PATH_res, 'S4H', testing=False)
+    # sensitivityObj.totals('inf')
     # sensitivityObj.totals('evap')
-    # sensitivityObj.compare()
-    # sensitivityObj.chg_runoff()
+
+    ### run two plots:
+    sensitivityObj.compare()
 
 PATH_res  = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_Default')
 # PATH_sens = op.join('/', 'Volumes', 'BB_4TB', 'Thesis', 'Results_S4H')
-PATH_sens = op.join(op.expanduser('~'), 'Desktop')
+PATH_save = op.join(op.expanduser('~'), 'Google_Drive', 'Thesis_git', 'Figs_Results')
 # run_summary()
 # run_dtw()
-run_runoff()
-# run_sensitivity()
-# savefigs(PATH_sens)
-plt.show()
+# run_runoff()
+
+run_sensitivity()
+savefigs(PATH_save)
+
+# plt.show()

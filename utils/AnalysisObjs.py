@@ -11,6 +11,7 @@ import swmmtoolbox as swmtbx
 from components import bcpl
 
 from collections import OrderedDict
+import random
 import numpy as np
 import pandas as pd
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
@@ -579,9 +580,9 @@ class runoff(res_base):
         self.df_run  = (self.df_sys.filter(like='Runoff').resample('MS').mean()
                                                     .loc[self.st:self.end, :])
 
-    def plot_ts_total(self, df_run=False):
+    def plot_ts_total(self, df_run=False, title='total_monthly_runoff'):
         """ Monthly Times series of Total System Runoff """
-        if df_run.empty:
+        if not isinstance(df_run, pd.DataFrame):
             df_run = self.df_run
         fig, axes = plt.subplots()
         colnames  = ['SLR: {} m'.format(c.split('_')[-1]) for c in df_run.columns]
@@ -589,15 +590,16 @@ class runoff(res_base):
         # could probably change global alpha and color cycles
         df_run.plot.bar(ax=axes, color=self.colors, alpha=0.75)
         axes.set_xticklabels(df_run.index.map(lambda t: t.strftime('%b')))
-        axes.legend(loc='upper left', frameon=True, shadow=True, facecolor='w')
-        axes.set_xlabel('Time', size=18)
+        axes.legend(loc='upper left', frameon=True, shadow=True, facecolor='w',
+                    prop={'size' : 18})
+        axes.set_xlabel('2011 - 2012')
         # axes.set_ylabel('Runoff Rate (CMS)', size=18)
-        axes.set_ylabel('% Change', size=18)
+        axes.set_ylabel('% Change in Runoff Depth')
         axes.yaxis.grid(True)
         # axes.yaxis.set_ticks(np.arange(0, 25, 2.5))
 
         fig.autofmt_xdate(bottom=0.2, rotation=20, ha='center')
-        fig.set_label('total_monthly_runoff')
+        fig.set_label(title)
 
     def shp_chg(self):
         """ Write shapefile of 2d change due to SLR """
@@ -665,7 +667,7 @@ class dtw(res_base):
         self.df_area  = pd.read_pickle(op.join(self.path_picks, 'percent_at_surface.df'))#.loc['2011-12-01-00':, :]
         self.dtws     = BB.uniq([float(dtw.split('_')[1]) for dtw in self.df_area.columns])
 
-    def plot_area_hours(self):
+    def plot_area_hours(self, title='area'):
         """ Plot area vs hours, curves of SLR, subplots of DTW """
         area_bins   = np.linspace(0, 100, 40)
         fig, axes   = plt.subplots(2, 2, True, True)
@@ -686,7 +688,7 @@ class dtw(res_base):
             axe[i].set_ylim((0, len(df_area_one)*1.10))
             axe[i].yaxis.grid(True)
         fig.subplots_adjust(left=0.125, right=0.92, wspace=0.175, hspace=0.35)
-        fig.set_label('dtw_area')
+        fig.set_label('dtw_{}'.format(title))
         return df_hrs
 
     def plot_hist_dtw(self, bins=10):
@@ -819,18 +821,18 @@ class dtw(res_base):
         return geo_df
 
 class sensitivity(res_base):
-    def __init__(self, path_result, sens='S4L'):
+    def __init__(self, path_result, sens='S4L', testing=False):
         super(sensitivity, self).__init__(path_result)
-        self.results = self._get_all_res(testing=True)
+        self.results = self._get_all_res(testing=testing)
         self.path_sens = op.join(op.dirname(self.path), 'Results_{}'.format(sens))
 
     def totals(self, var='run'):
         """ Total Var for Whole Year """
         ### get this going for all 3 variables, subplot for each? might be too cluttered
         # will have to set up some conversions
-        var_map   = {'run' : 'Runoff Rate (CMS)',
+        var_map   = {'run' : 'Runoff Rate (m$^3$s$-1$)',
                      'inf' : 'Infiltration Rate (m/d)',
-                    'evap' : 'Evaporation Volume (CM)'}
+                    'evap' : 'Evaporation Volume (m$^3$)'}
         ids = []
         arr_all   = np.ones([len(self.slr_sh), len(self.results)])
         markers   = [".",",","o","v","^","<",">","1","2","3","4","8","s","p",
@@ -846,6 +848,7 @@ class sensitivity(res_base):
         #                                         i in range(len(self.results))]))
         # color_cycle = axes._get_lines.prop_cycle
         # print (color_cycle)
+
         for i, (ID, resdir) in enumerate(self.results.items()):
             dict_var = self._load_swmm(var, path=resdir)
             y        = []
@@ -855,29 +858,32 @@ class sensitivity(res_base):
                 y.append(np.nansum(dict_var[str(slr)][3696:-698, :, :]))
                 arr_all[j, i] = y[-1]
             ids.append(ID)
-            if ID == "Default":
-                marker    = '*'
-                mark_size = 130
-                color     = 'k'
+            # do this last
+            if ID == 'Default':
+                y_default = y
+                # axes.scatter(self.slr, y, label=ID, marker='*', s=200, color='k')
             else:
-                marker = markers[i]
-                mark_size = 40
-                color = colors[i]
-            jitter_x = self._rand_jitter(self.slr)
-            jitter_y = self._rand_jitter(y)
-            axes.scatter(jitter_x, jitter_y, label=ID, color=color, marker=marker, s=mark_size)
+                marker    = markers[i]
+                mark_size = 125
+                color     = colors[i]
+                jitter_x  = self._rand_jitter(self.slr, 'x')
+                jitter_y  = self._rand_jitter(y, 'y')
+                axes.scatter(jitter_x, jitter_y, label=ID, color=color, marker=marker, s=mark_size)
 
+        axes.scatter(self.slr, y_default, label='Default', marker='*', s=200, color='k')
         axes.legend(frameon=True, shadow=True, facecolor='w',numpoints=1,
-                                                    bbox_to_anchor=(1.1, 1.00))
-        axes.set_ylabel(var_map[var])
-        axes.set_xlabel('SLR (m)')
-        axes.tick_params(labelsize='14')
+                                prop={'size':'15'}, bbox_to_anchor=(1.06, 1.055))
+        axes.set_ylabel(var_map[var], fontsize=25)
+        axes.set_xlabel('SLR (m)', fontsize=25)
+        axes.tick_params(labelsize='18')
         axes.set_xticks([float(slr) for slr in self.slr])
         axes.xaxis.set_major_formatter(FormatStrFormatter('%0.1f'))
         axes.yaxis.grid(True)
         fig.set_label('{}_sensitivity'.format(var))
-        fig.subplots_adjust(top=0.92, bottom=0.08, left=0.10, right=0.95, hspace=0.25,
-                            wspace=0.15)
+        fig.subplots_adjust(top=0.92, bottom=0.08, left=0.10, right=0.95,
+                            hspace=0.25, wspace=0.15)
+        fig.set_label('{}{}_sensitivity'.format(var, random.randint(0,10000)))
+
         # just to have
         df_all = pd.DataFrame(arr_all, index=self.slr, columns=ids)
 
@@ -885,9 +891,9 @@ class sensitivity(res_base):
 
     def compare(self):
         """ Compare Default DTW and RUNOFF plots to a sensitivity plot """
-        dtw(self.path_sens).plot_area_hours()
+        dtw(self.path_sens).plot_area_hours(sens)
         df_runoff_chg = self.chg_runoff()
-        runoff(self.path_sens).plot_ts_total(df_runoff_chg)
+        runoff(self.path_sens).plot_ts_total(df_runoff_chg, 'run_compare')
 
     def chg_runoff(self):
         """ Compute change in runoff from default to sensitivity scenario """
@@ -902,7 +908,7 @@ class sensitivity(res_base):
         path_parent   = op.dirname(self.path)
         res_dict      = OrderedDict()
         for i, resdir in enumerate(os.listdir(path_parent)):
-            if testing and i > 5:
+            if testing and i > 10:
                 return res_dict
             if resdir.startswith('Results_'):
                 res_id       = resdir.split('_')[1]
@@ -910,9 +916,13 @@ class sensitivity(res_base):
                 res_dict[res_id] = path_pickdir
         return res_dict
 
-    def _rand_jitter(self, arr):
+    def _rand_jitter(self, arr, axis='x'):
         """ Use to jitter plot markers so they can all be seen """
-        stdev = .05*(max(arr)-min(arr))
+        if axis == 'x':
+            stdev = 0.090 *(max(arr)-min(arr))
+        if axis == 'y':
+            stdev = 0.025 *(max(arr)-min(arr))
+
         return arr + np.random.randn(len(arr)) * stdev
 
 def set_rc_params():
@@ -928,7 +938,7 @@ def set_rc_params():
     mpl.rcParams['xtick.labelsize']  = 15
     mpl.rcParams['ytick.labelsize']  = 15
 
-    # mpl.rcParams['savefig.dpi']    = 2000
+    mpl.rcParams['savefig.dpi']      = 300
     mpl.rcParams['savefig.format']   = 'pdf'
     # mpl.rcParams['figure.figsize'] = (18, 12) # for saving
     # matplotlib.rcParams['axes.labelweight'] = 'bold'
