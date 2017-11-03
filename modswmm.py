@@ -3,12 +3,12 @@
 Run SWMM and MODFLOW2005 sequentially
 
 Usage:
-  Coupled-11.py KPERS PARM [options]
+  modswmm.py KPERS PARM [options]
 
 Examples:
   Change **params dictionary within script.
   Run a year coupled simulation
-  ./Coupled-11.py 550 Default
+  ./modswmm.py 550 Default
 
 Arguments:
   kpers       Total number of MODFLOW Steps / SWMM Days
@@ -30,7 +30,6 @@ Notes:
 
   Area   : West Neck Creek, Virginia Beach
   Created: 2017-1-15
-  Updated: 2017-05-12
   Author : Brett Buzzanga
 
 """
@@ -410,7 +409,7 @@ if __name__ == '__main__':
     typecheck = Schema({'KPERS'     : Use(int), 'PARM'  : Use(str),
                         '--coupled' : Use(int), '--dev' : Use(int)},
                         ignore_extra_keys=True)
-    # this is the test
+    
     args = typecheck.validate(arguments)
     SLR = [0.0, 1.0, 2.0]
 

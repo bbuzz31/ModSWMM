@@ -667,7 +667,7 @@ class dtw(res_base):
         self.df_area  = pd.read_pickle(op.join(self.path_picks, 'percent_at_surface.df'))#.loc['2011-12-01-00':, :]
         self.dtws     = BB.uniq([float(dtw.split('_')[1]) for dtw in self.df_area.columns])
 
-    def plot_area_hours(self, title='area'):
+    def plot_area_hours(self, compare=False):
         """ Plot area vs hours, curves of SLR, subplots of DTW """
         area_bins   = np.linspace(0, 100, 40)
         fig, axes   = plt.subplots(2, 2, True, True)
@@ -688,7 +688,13 @@ class dtw(res_base):
             axe[i].set_ylim((0, len(df_area_one)*1.10))
             axe[i].yaxis.grid(True)
         fig.subplots_adjust(left=0.125, right=0.92, wspace=0.175, hspace=0.35)
-        fig.set_label('dtw_{}'.format(title))
+        fig.set_label('dtw_area')
+        # for comparing in sensitivity
+        if compare:
+            for ax in axe:
+                ax.set_xlabel('% Area ({})'.format(compare))
+            fig.set_label('dtw_{}'.format(compare))
+    
         return df_hrs
 
     def plot_hist_dtw(self, bins=10):
@@ -821,9 +827,10 @@ class dtw(res_base):
         return geo_df
 
 class sensitivity(res_base):
-    def __init__(self, path_result, sens='S4L', testing=False):
+    def __init__(self, path_result, sens='S4H', testing=False):
         super(sensitivity, self).__init__(path_result)
         self.results = self._get_all_res(testing=testing)
+        self.sens    = sens
         self.path_sens = op.join(op.dirname(self.path), 'Results_{}'.format(sens))
 
     def totals(self, var='run'):
@@ -891,7 +898,8 @@ class sensitivity(res_base):
 
     def compare(self):
         """ Compare Default DTW and RUNOFF plots to a sensitivity plot """
-        dtw(self.path_sens).plot_area_hours(sens)
+        dtw(self.path).plot_area_hours(compare='Default')
+        dtw(self.path_sens).plot_area_hours(compare=self.sens)
         df_runoff_chg = self.chg_runoff()
         runoff(self.path_sens).plot_ts_total(df_runoff_chg, 'run_compare')
 
