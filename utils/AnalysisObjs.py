@@ -661,7 +661,7 @@ class dtw(res_base):
         res_base.__init__(self, path_result)
         # super(dtw, self).__init__(path_result)
 
-        # pickle converted this to a year
+        ### annual average, all cells; pickle converted this to a year
         self.df_year  = pd.read_pickle(op.join(self.path_picks, 'dtw_yr.df'))
         # print (self.df_year.head())
         self.df_area  = pd.read_pickle(op.join(self.path_picks, 'percent_at_surface.df'))#.loc['2011-12-01-00':, :]
@@ -694,7 +694,7 @@ class dtw(res_base):
             for ax in axe:
                 ax.set_xlabel('% Area ({})'.format(compare))
             fig.set_label('dtw_{}'.format(compare))
-    
+
         return df_hrs
 
     def plot_hist_dtw(self, bins=10):
