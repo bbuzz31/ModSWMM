@@ -231,10 +231,10 @@ class res_base(object):
         curfig.savefig(op.join(self.path_fig, curfig.get_label()))
 
     @staticmethod
-    def fill_grid(ser):
+    def fill_grid(ser, fill_value=np.nan):
         """ Create WNC grid from a series with 1 indexed zones and values """
         mat = np.zeros([3774])
-        mat[:] = np.nan
+        mat[:] = fill_value
         # parse numpy array where column 1 is an index
         if isinstance(ser, np.ndarray):
             for i, idx in enumerate(ser[1, :]):
