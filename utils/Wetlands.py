@@ -94,6 +94,7 @@ def testing_indicator(mat_dtw, path_data, cutoff):
     ## performance
     performance     = (count_correct - count_incorrect) / float(len(df_wet)) * 100
     # print ('Percent correctly identified: {} %.'.format(round(performance, 3)))
+    return performance
 
 def optimize(mat_dtw, path_data):
     """ Maximize the percent correctly identiified """
@@ -101,10 +102,10 @@ def optimize(mat_dtw, path_data):
     cutoff  = 0
     for test in np.arange(-5500, 0, 0.2):
         result = (testing_indicator(mat_dtw, path_data, cutoff))
+
         if result > optimal:
             optimal = result
             cutoff  = test
-    print ('hi')
     print (optimal, cutoff)
 
 PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
