@@ -26,7 +26,11 @@ class Wetlands(res_base):
         mat_z     = (np.load(op.join(self.path_data, 'Land_Z.npy'))
                                                 .reshape(self.nrows, self.ncols))
         mat_dtw   = (mat_z - mat_heads).reshape(mat_heads.shape[0], -1)
-        return mat_dtw.T
+
+        ### truncate init conditions & transpose
+        mat_dtw_trunc = mat_dtw[self.ts_st:self.ts_end].T
+
+        return mat_dtw_trunc
 
     def make_indicator(self, cutoff=-2500, show=False):
         """ Indicator built from longest time at lowest DTW """
@@ -41,6 +45,36 @@ class Wetlands(res_base):
             print ('Wetland cells: {}'.format(np.count_nonzero(~np.isnan(self.mat_wetlands))))
 
         return (mat_dtw_sum, mat_highest)
+
+    def testing_indicator(self, cutoff=-2500):
+        """ Compare results form 'developing indicator' to actual CCAP wetlands """
+        mat_indicator = self.make_indicator(cutoff=cutoff)[1]
+
+        ### REFACTOR THIS FOR SPEED ###
+        df_ind = pd.DataFrame(mat_indicator.reshape(-1)).dropna()
+        df_wet = pd.DataFrame(self.mat_wetlands.reshape(-1)).dropna()
+
+        ## get count of how many correct
+        count_correct   = (sum(df_wet.index.isin(df_ind.index)))
+        ## get count of how many incorrect
+        count_incorrect = (len(df_wet) - count_correct)
+
+        ## performance
+        performance     = (count_correct - count_incorrect) / float(len(df_wet)) * 100
+        print ('Percent correctly identified: {} %\n'.format(round(performance, 3)))
+        return performance
+
+    def optimize(self):
+        """ Maximize the percent correctly identiified """
+        optimal = 0
+        cutoff  = 0
+        for test in np.arange(-5500, 0, 1000):
+            print ('Cutoff value: {}'.format(test))
+            result = self.testing_indicator(test)
+            if result > optimal:
+                optimal = result
+                cutoff  = test
+        print (optimal, cutoff)
 
     def plot_indicators(self, cut=-2500):
         """
@@ -67,19 +101,6 @@ class Wetlands(res_base):
 
         plt.show()
 
-    ### probably useless
-    def dtw_wet_avg_ann(self):
-        """ Subset dtw df (all cells, annual average to just wetland cells """
-        df_wet  = self.df_subs[((self.df_subs.Majority >= 13) & (self.df_subs.Majority < 19))].iloc[:, :3]
-
-        ## avg annual dtw
-        df_dtw  = dtw(self.path_res).df_year
-        df_dtw.columns = [str(col) for col in df_dtw.columns]
-
-        df_wets = df_dtw[df_dtw.index.isin(df_wet.Zone)]
-        df_drys = df_dtw[~df_dtw.index.isin(df_wet.Zone)].dropna()
-        return df_wets, df_drys
-
     def dtw_wet_all(self, transpose=False):
         """ Separate ALL dtw / cells / times by wetlands/nonwetland """
         ## convert to dtw for subsetting
@@ -96,18 +117,22 @@ class Wetlands(res_base):
         return df_wets, df_drys
 
     def comp_histograms(self, kind='avg', plot=True):
+        """ Plot dtw hists of ann avg (dtw_wet_ann_avg) or all (dtw_wet_all) """
         if kind == 'avg':
             df_wets_all, df_drys_all = self.dtw_wet_avg_ann()
             df_wets = df_wets_all['0.0']
             df_drys = df_drys_all['0.0']
             xlab   = 'Ann avg dtw'
-
         else:
-            df_wets, df_drys = self.dtw_wet_all(transpose=True)
-            xlab   = 'dtw (all)'
+            df_wets, df_drys = self.dtw_wet_all(transpose=False)
+            df_wets.dropna(axis=0, inplace=True)
+            df_drys.dropna(axis=0, inplace=True)
+            xlab    = 'dtw (all)'
+
         fig, axes        = plt.subplots(ncols=2, figsize=(10,6))
         axe              = axes.ravel()
         bins             = np.arange(0, 5.5, 0.5)
+
         if plot:
             axe[0].hist(df_wets, bins=bins)
             axe[1].hist(df_drys, bins=bins)
@@ -118,49 +143,26 @@ class Wetlands(res_base):
             axe[0].set_ylabel('Frequency')
             # fig.subplots_adjust(right=0.92, wspace=0.175, hspace=0.35)
             fig.subplots_adjust(bottom=0.15)
-
             plt.show()
         else:
             print (df_wets.describe())
             print (df_drys.describe())
 
-def testing_indicator(mat_dtw, path_data, cutoff):
-    """ Compare results form 'developing indicator' to actual CCAP wetlands """
-    mat_indicator, mat_wetlands = developing_indicator(mat_dtw, path_data, cutoff)
-    df_ind = pd.DataFrame(mat_indicator.reshape(-1)).dropna()
-    df_wet = pd.DataFrame(mat_wetlands.reshape(-1)).dropna()
+    ### probably useless
+    def dtw_wet_avg_ann(self):
+        """ Subset dtw df (all cells, annual average to just wetland cells """
+        df_wet  = self.df_subs[((self.df_subs.Majority >= 13) & (self.df_subs.Majority < 19))].iloc[:, :3]
 
-    ## get count of how many correct
-    count_correct   = (sum(df_wet.index.isin(df_ind.index)))
-    ## get count of how many incorrect
-    count_incorrect = (len(df_wet) - count_correct)
+        ## avg annual dtw
+        df_dtw  = dtw(self.path_res).df_year
+        df_dtw.columns = [str(col) for col in df_dtw.columns]
 
-    ## performance
-    performance     = (count_correct - count_incorrect) / float(len(df_wet)) * 100
-    # print ('Percent correctly identified: {} %.'.format(round(performance, 3)))
-    return performance
-
-def optimize(mat_dtw, path_data):
-    """ Maximize the percent correctly identiified """
-    optimal = 0
-    cutoff  = 0
-    for test in np.arange(-5500, 0, 0.2):
-        result = (testing_indicator(mat_dtw, path_data, cutoff))
-
-        if result > optimal:
-            optimal = result
-            cutoff  = test
-    print (optimal, cutoff)
+        df_wets = df_dtw[df_dtw.index.isin(df_wet.Zone)]
+        df_drys = df_dtw[~df_dtw.index.isin(df_wet.Zone)].dropna()
+        return df_wets, df_drys
 
 PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
 res      = Wetlands(PATH_res)
-res.comp_histograms(kind='all', plot=False)
-# Result   = res_base(PATH_res)
-
-os.sys.exit()
-
-
-# comp_histograms(plot=False)
-# testing_indicator(mat_dtw, Result.path_data)
-optimize(mat_dtw, Result.path_data)
+# res.comp_histograms(kind='all', plot=True)
+res.optimize()

@@ -50,7 +50,9 @@ class res_base(object):
         self.slr        = sorted(self.slr_names)
         self.st         = '2011-12-01-00'
         self.end        = '2012-11-30-00'
-        self.ts_yr_hr   = self.ts_hr[3696:-698]
+        self.ts_st      = 3696
+        self.ts_end     = -698
+        self.ts_yr_hr   = self.ts_hr[self.ts_st:self.ts_end]
         self.ts_yr_day  = self.ts_day[154:-30]
         self.nrows      = 74
         self.ncols      = 51
