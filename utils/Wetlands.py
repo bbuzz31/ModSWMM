@@ -4,7 +4,8 @@ import seaborn as sns
 class Wetlands(res_base):
     def __init__(self, path_results):
         super(Wetlands, self).__init__(path_results)
-        self.mat_dtw = self._make_dtw()
+        self.path_res = path_results
+        self.mat_dtw  = self._make_dtw()
         self.df_subs, self.mat_wetlands = self._ccap_wetlands()
 
     def _ccap_wetlands(self):
@@ -66,46 +67,62 @@ class Wetlands(res_base):
 
         plt.show()
 
+    ### probably useless
+    def dtw_wet_avg_ann(self):
+        """ Subset dtw df (all cells, annual average to just wetland cells """
+        df_wet  = self.df_subs[((self.df_subs.Majority >= 13) & (self.df_subs.Majority < 19))].iloc[:, :3]
 
-def dtw_wetlands(path_data, path_result):
-    """ Subset dtw df (all cells, annual average to just wetland cells """
-    df      = pd.read_csv(op.join(path_data, 'SWMM_subs.csv'))
-    df_wet  = df[((df.Majority >= 13) & (df.Majority < 19))].iloc[:, :3]
-    df_dtw  = dtw(path_result).df_year
-    ## convert col names to string
-    df_dtw.columns = [str(col) for col in df_dtw.columns]
-    df_wets = df_dtw[df_dtw.index.isin(df_wet.Zone)]
-    df_drys = df_dtw[~df_dtw.index.isin(df_wet.Zone)].dropna()
-    return df_wets, df_drys
+        ## avg annual dtw
+        df_dtw  = dtw(self.path_res).df_year
+        df_dtw.columns = [str(col) for col in df_dtw.columns]
 
-def comp_histograms(plot=True):
-    df_wets, df_drys = dtw_wetlands(Result.path_data, PATH_res)
-    fig, axes        = plt.subplots(ncols=2, figsize=(10,6))
-    axe              = axes.ravel()
-    bins = np.arange(0, 5.5, 0.5)
-    if plot:
-        axe[0].hist(df_wets['0.0'], bins=bins)
-        axe[1].hist(df_drys['0.0'], bins=bins)
-        plt.show()
-    else:
-        print (df_wets['0.0'].describe())
-        print (df_drys['0.0'].describe())
+        df_wets = df_dtw[df_dtw.index.isin(df_wet.Zone)]
+        df_drys = df_dtw[~df_dtw.index.isin(df_wet.Zone)].dropna()
+        return df_wets, df_drys
 
-def dtw_wetlands2(mat_dtw, path_data):
-    """ Separate ALL dtw / cells / times by wetlands/nonwetland """
-    ## convert to dtw for subsetting
-    df_dtw  = pd.DataFrame(mat_dtw)
+    def dtw_wet_all(self, transpose=False):
+        """ Separate ALL dtw / cells / times by wetlands/nonwetland """
+        ## convert to dtw for subsetting
+        df_dtw  = pd.DataFrame(self.mat_dtw)
+        df_wet  = self.df_subs[((self.df_subs.Majority >= 13) & (self.df_subs.Majority < 19))].iloc[:, :3]
 
-    df_subs = pd.read_csv(op.join(path_data, 'SWMM_subs.csv'))
-    df_wet  = df_subs[((df_subs.Majority >= 13) & (df_subs.Majority < 19))].iloc[:, :3]
+        df_dtw.index = range(10000, 13774)
+        df_wets = df_dtw[df_dtw.index.isin(df_wet.Zone)]
+        df_drys = df_dtw[~df_dtw.index.isin(df_wet.Zone)].dropna()
+        # print (df_wets.shape)
+        # print (df_drys.shape)
+        if transpose:
+            return df_wets.T, df_drys.T
+        return df_wets, df_drys
 
-    df_dtw.index = range(10000, 13774)
-    df_wets = df_dtw[df_dtw.index.isin(df_wet.Zone)]
-    df_drys = df_dtw[~df_dtw.index.isin(df_wet.Zone)].dropna()
-    return df_wets, df_drys
+    def comp_histograms(self, kind='avg', plot=True):
+        if kind == 'avg':
+            df_wets_all, df_drys_all = self.dtw_wet_avg_ann()
+            df_wets = df_wets_all['0.0']
+            df_drys = df_drys_all['0.0']
+            xlab   = 'Ann avg dtw'
 
-    print (df_wets.shape)
-    print (df_drys.shape)
+        else:
+            df_wets, df_drys = self.dtw_wet_all(transpose=True)
+            xlab   = 'dtw (all)'
+        fig, axes        = plt.subplots(ncols=2, figsize=(10,6))
+        axe              = axes.ravel()
+        bins             = np.arange(0, 5.5, 0.5)
+        if plot:
+            axe[0].hist(df_wets, bins=bins)
+            axe[1].hist(df_drys, bins=bins)
+            titles = ['Wetlands', 'Uplands']
+            for i, t in enumerate(titles):
+                axe[i].set_title(t)
+                axe[i].set_xlabel(xlab)
+            axe[0].set_ylabel('Frequency')
+            # fig.subplots_adjust(right=0.92, wspace=0.175, hspace=0.35)
+            fig.subplots_adjust(bottom=0.15)
+
+            plt.show()
+        else:
+            print (df_wets.describe())
+            print (df_drys.describe())
 
 def testing_indicator(mat_dtw, path_data, cutoff):
     """ Compare results form 'developing indicator' to actual CCAP wetlands """
@@ -137,17 +154,13 @@ def optimize(mat_dtw, path_data):
 
 PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
-Wetlands(PATH_res).plot_indicator()
+res      = Wetlands(PATH_res)
+res.comp_histograms(kind='all', plot=False)
+# Result   = res_base(PATH_res)
 
 os.sys.exit()
-Result   = res_base(PATH_res)
 
 
-# print (dtw(PATH_res).plot_area_hours())
-# print (dtw(path_res).df_year.head())
 # comp_histograms(plot=False)
-mat_dtw = make_dtw(PATH_res, Result.path_data, 0.0)
-# dtw_wetlands2(mat_dtw, Result.path_data)
-# developing_indicator(mat_dtw, Result.path_data)
 # testing_indicator(mat_dtw, Result.path_data)
 optimize(mat_dtw, Result.path_data)
