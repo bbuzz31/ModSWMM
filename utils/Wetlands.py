@@ -8,6 +8,9 @@ class Wetlands(res_base):
         self.mat_dtw  = self._make_dtw()
         self.df_subs, self.mat_wetlands = self._ccap_wetlands()
 
+        # highest values (closest to 0) = most hours with lowest DTW
+        self.mat_dtw_sum = (self.mat_dtw * -1).sum(axis=1)
+
     def _ccap_wetlands(self):
         """ Get CCAP wetlands df and full matrix grid """
         df_subs = pd.read_csv(op.join(self.path_data, 'SWMM_subs.csv'))
@@ -32,23 +35,14 @@ class Wetlands(res_base):
 
         return mat_dtw_trunc
 
-    def make_indicator(self, cutoff=-2500, show=False):
-        """ Indicator built from longest time at lowest DTW """
-        # highest values (closest to 0) = most hours with lowest DTW
-        mat_dtw_sum = (self.mat_dtw * -1).sum(axis=1)
-
-        ## get just highest cells
-        mat_highest = np.where(mat_dtw_sum <= cutoff, np.nan, mat_dtw_sum)
-
-        if show:
-            print ('Indicated cells: {}'.format(np.count_nonzero(~np.isnan(mat_highest))))
-            print ('Wetland cells: {}'.format(np.count_nonzero(~np.isnan(self.mat_wetlands))))
-
-        return (mat_dtw_sum, mat_highest)
-
-    def testing_indicator(self, cutoff=-2500):
+    def indicator(self, cutoff=-2500, show=False):
         """ Compare results form 'developing indicator' to actual CCAP wetlands """
-        mat_indicator = self.make_indicator(cutoff=cutoff)[1]
+        ## get just highest cells (longest time at lowest DTW)
+        mat_indicator = np.where(self.mat_dtw_sum <= cutoff, np.nan, self.mat_dtw_sum)
+        if show:
+            print ('Indicated cells: {}'.format(np.count_nonzero(~np.isnan(mat_indicator))))
+            print ('Wetland cells: {}'.format(np.count_nonzero(~np.isnan(self.mat_wetlands))))
+            return mat_indicator
 
         ### REFACTOR THIS FOR SPEED ###
         df_ind = pd.DataFrame(mat_indicator.reshape(-1)).dropna()
@@ -57,38 +51,43 @@ class Wetlands(res_base):
         ## get count of how many correct
         count_correct   = (sum(df_wet.index.isin(df_ind.index)))
         ## get count of how many incorrect
-        count_incorrect = (len(df_wet) - count_correct)
+        count_incorrect = (len(df_ind) - count_correct)
+        # print ('Correct: {}'.format(count_correct))
+        # print ('Incorrect: {}'.format(count_incorrect))
+
 
         ## performance
         performance     = (count_correct - count_incorrect) / float(len(df_wet)) * 100
-        print ('Percent correctly identified: {} %\n'.format(round(performance, 3)))
+        # print ('Percent correctly identified: {} %\n'.format(round(performance, 3)))
         return performance
 
-    def optimize(self):
+    def optimize(self, increment=1):
         """ Maximize the percent correctly identiified """
-        optimal = 0
-        cutoff  = 0
-        for test in np.arange(-5500, 0, 1000):
-            print ('Cutoff value: {}'.format(test))
-            result = self.testing_indicator(test)
-            if result > optimal:
-                optimal = result
-                cutoff  = test
-        print (optimal, cutoff)
+        optimal = []
+        cutoff  = []
+        for test in np.arange(np.floor(np.nanmin(self.mat_dtw_sum)), 0, increment):
+            # print('Cutoff: {}'.format(test))
+            result = self.indicator(test)
+            optimal.append(result)
+            cutoff.append(test)
+
+        res_pairs = list(zip(optimal, cutoff))
+        optimal   = (max(res_pairs, key=lambda item:item[0]))
+        print (round(optimal[0], 4), optimal[1])
 
     def plot_indicators(self, cut=-2500):
         """
         Make histogram of cells, show their locations
         Show cells above cutoff and wetland locations
         """
-        mat_dtw_sum, mat_highest = self.make_indicator(cut)
-        mask = np.isnan(mat_dtw_sum)
+        mat_highest = self.indicator(cut, show=True)
+        mask = np.isnan(self.mat_dtw_sum)
         bins = np.linspace(-5000, 0, 21)
 
         fig, axes = plt.subplots(ncols=2, nrows=2)
         axe       = axes.ravel()
-        axe[0].hist(mat_dtw_sum[~mask], bins=bins)
-        axe[1].imshow(mat_dtw_sum.reshape(74, -1), cmap=plt.cm.jet)
+        axe[0].hist(self.mat_dtw_sum[~mask], bins=bins)
+        axe[1].imshow(self.mat_dtw_sum.reshape(74, -1), cmap=plt.cm.jet)
         axe[2].imshow(mat_highest.reshape(74, -1), cmap=plt.cm.jet)
         axe[3].imshow(self.mat_wetlands.reshape(74, -1), cmap=plt.cm.jet)
 
@@ -101,6 +100,7 @@ class Wetlands(res_base):
 
         plt.show()
 
+    ### probably useless
     def dtw_wet_all(self, transpose=False):
         """ Separate ALL dtw / cells / times by wetlands/nonwetland """
         ## convert to dtw for subsetting
@@ -116,6 +116,7 @@ class Wetlands(res_base):
             return df_wets.T, df_drys.T
         return df_wets, df_drys
 
+    ### probably useless
     def comp_histograms(self, kind='avg', plot=True):
         """ Plot dtw hists of ann avg (dtw_wet_ann_avg) or all (dtw_wet_all) """
         if kind == 'avg':
@@ -165,5 +166,5 @@ class Wetlands(res_base):
 PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
 res      = Wetlands(PATH_res)
-res.comp_histograms(kind='avg', plot=True)
 # res.optimize()
+res.plot_indicators()
