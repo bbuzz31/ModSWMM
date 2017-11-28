@@ -5,10 +5,10 @@ import pickle
 class Wetlands(res_base):
     def __init__(self, path_results):
         super(Wetlands, self).__init__(path_results)
-        self.path_res = path_results
-        self.mat_dtw  = self._make_dtw()
+        self.path_res    = path_results
+        self.mat_dtw     = self._make_dtw()
         self.df_subs, self.mat_wetlands = self._ccap_wetlands()
-
+        self.mask_wet    = np.isnan(self.mat_wetlands.reshape(-1))
         # highest values (closest to 0) = most hours with lowest DTW
         self.mat_dtw_sum = (self.mat_dtw * -1).sum(axis=1)
 
@@ -45,8 +45,7 @@ class Wetlands(res_base):
             print ('Wetland cells: {}'.format(np.count_nonzero(~np.isnan(self.mat_wetlands))))
             return mat_indicator
 
-        mask_wet = np.isnan(self.mat_wetlands.reshape(-1))
-        mat_ind  = mat_indicator[~mask_wet & ~np.isnan(mat_indicator)]
+        mat_ind  = mat_indicator[~self.mask_wet & ~np.isnan(mat_indicator)]
 
         df_ind = pd.DataFrame(mat_indicator.reshape(-1)).dropna()
         df_wet = pd.DataFrame(self.mat_wetlands.reshape(-1)).dropna()
@@ -63,40 +62,50 @@ class Wetlands(res_base):
         # print ('Percent corretly identified: {} %\n'.format(round(performance, 3)))
         return (performance, count_correct, count_incorrect)
 
-    def indicator_wets_only(self):
+    def indicator_wets_only(self, make_new=False):
         """ Make an indicator that captures over 90 % of CCAP wetlands """
         ### select wetland from all dtw information
-        mask_wet    = np.isnan(self.mat_wetlands.reshape(-1))
-        mat_wet_dtw = self.mat_dtw[~mask_wet]
+        mat_wet_dtw    = self.mat_dtw[~self.mask_wet]
+        mat_nonwet_dtw = self.mat_dtw[self.mask_wet]
+        mat_dry_dtw    = mat_nonwet_dtw[~np.isnan(mat_nonwet_dtw)].reshape(
+                                                -1, mat_nonwet_dtw.shape[1])
 
-        if op.exists('indicator_results1.lst'):
-            with open('indicator_results.lst') as fh:
-                results = pickle.load(fh)
-
-            results_sorted = (sorted(results, reverse=True, key=lambda item: item[2]))
+        if op.exists(op.join(self.path_data, 'dtw_hrs_wet_dry.npy')) and not make_new:
+            mat_all = np.load(op.join(self.path_data, 'dtw_hrs_wet_dry.npy'))
+            df_all  = pd.read_pickle(op.join(self.path_data, 'dtw_hrs_wet_dry.df'))
+            print ('Loaded mat and df of dtw/hrs for wet and drylands')
 
         else:
-            dtw_tests = np.arange(0, 1, 0.01)
-            hrs_tests = range(5000, self.mat_dtw.shape[1])
-            mat_all   = np.zeros([len(dtw_tests) * len(hrs_tests), 4])
+            print ('Finding optimum criteria; will take a bit')
+            dtw_tests = np.arange(0, 1, 0.1)
+            hrs_tests = range(3000, self.mat_dtw.shape[1])
+            mat_all   = np.zeros([len(dtw_tests) * len(hrs_tests), 7])
 
             for i, dtw_test in enumerate(dtw_tests):
                 for j, hrs_test in enumerate(hrs_tests):
-                    result = ((mat_wet_dtw <= dtw_test).sum(axis=1) > hrs_test).sum()
-                    mat_all[i*len(hrs_tests)+j, 0] = result
-                    mat_all[i*len(hrs_tests)+j, 1] = dtw_test
-                    mat_all[i*len(hrs_tests)+j, 2] = hrs_test
+                    res_wet = ((mat_wet_dtw <= dtw_test).sum(axis=1) > hrs_test).sum()
+                    res_dry = ((mat_dry_dtw <= dtw_test).sum(axis=1) > hrs_test).sum()
+                    mat_all[i*len(hrs_tests)+j, 0] = dtw_test
+                    mat_all[i*len(hrs_tests)+j, 1] = hrs_test
+                    mat_all[i*len(hrs_tests)+j, 2] = res_wet
+                    mat_all[i*len(hrs_tests)+j, 4] = res_dry
 
+            mat_good       = mat_all[mat_all[:,2]>0]
+            mat_good[:, 3] = mat_good[:,2]/float(mat_wet_dtw.shape[0])
+            mat_best       = mat_good[mat_good[:,4] >= 0.90]
+            mat_best[:, 5] = 1 - ((mat_best[:,4]) / float(mat_dry_dtw.shape[0]))
+            mat_best[:, 6] = mat_best[:,3] / (mat_best[:,5])
+            colnames = ['dtw_thresh', 'hrs_thresh', 'n_wet', 'perWet', 'n_dry', 'perDry', 'perRatio']
+            df_all  = pd.DataFrame(mat_best, columns=colnames).sort_values(by='perRatio')
 
-            mat_good       = mat_all[mat_all[:,0]>0]
-            mat_good[:, 3] = mat_good[:,0]/float(mat_wet_dtw.shape[0])
-            mat_best       = mat_good[mat_good[:,3] >= 0.90]
-            np.save('indicator_result.npy', mat_best)
+            np.save(op.join(self.path_data, 'dtw_hrs_wet_dry.npy'), mat_best)
+            df_all.to_pickle(op.join(self.path_data, 'dtw_hrs_wet_dry.df'))
 
-            # print (optimal)
+            print (df_all.head(10))
 
-        return
+        return mat_all, df_all
 
+    ### possibly deprecated since optimizing with indicator_wets
     def apply_indicator(self):
         """ Test the indicator developed using indicator_wets_only on drys """
         ### eventually return these from other func
@@ -104,14 +113,12 @@ class Wetlands(res_base):
         hrs_thresh = 7000
 
         ## get only dryland cells
-        mask_wet       = np.isnan(self.mat_wetlands.reshape(-1))
-        mat_nonwet_dtw = self.mat_dtw[mask_wet]
+        mat_nonwet_dtw = self.mat_dtw[self.mask_wet]
         mat_dry_dtw    = mat_nonwet_dtw[~np.isnan(mat_nonwet_dtw)].reshape(-1, mat_nonwet_dtw.shape[1])
 
         # apply conditions
         result = ((mat_dry_dtw <= dtw_thresh).sum(axis=1) > hrs_thresh).sum()
         print (result)
-
 
     def optimize(self, increment=1):
         """ Maximize the percent correctly identiified """
@@ -228,5 +235,6 @@ PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
 res      = Wetlands(PATH_res)
 # res.optimize(increment=10)
-# res.indicator_wets_only()
-res.apply_indicator()
+res.indicator_wets_only(make_new=True)
+# res.apply_indicator()
+# res.minimum_drys(make_new=True)
