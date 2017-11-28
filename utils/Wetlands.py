@@ -122,11 +122,12 @@ class Wetlands(res_base):
             df_wets_all, df_drys_all = self.dtw_wet_avg_ann()
             df_wets = df_wets_all['0.0']
             df_drys = df_drys_all['0.0']
-            xlab   = 'Ann avg dtw'
+            xlab    = 'Ann avg dtw'
         else:
-            df_wets, df_drys = self.dtw_wet_all(transpose=False)
-            df_wets.dropna(axis=0, inplace=True)
-            df_drys.dropna(axis=0, inplace=True)
+            print ('this will take a min (& isnt very useful)')
+            df_wets, df_drys = self.dtw_wet_all(transpose=True)
+            df_wets.dropna(axis=1, inplace=True)
+            df_drys.dropna(axis=1, inplace=True)
             xlab    = 'dtw (all)'
 
         fig, axes        = plt.subplots(ncols=2, figsize=(10,6))
@@ -164,5 +165,5 @@ class Wetlands(res_base):
 PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
 res      = Wetlands(PATH_res)
-# res.comp_histograms(kind='all', plot=True)
-res.optimize()
+res.comp_histograms(kind='avg', plot=True)
+# res.optimize()
