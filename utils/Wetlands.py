@@ -97,8 +97,20 @@ class Wetlands(res_base):
 
         return
 
+    def apply_indicator(self):
+        """ Test the indicator developed using indicator_wets_only on drys """
+        ### eventually return these from other func
+        dtw_thresh = 0.301
+        hrs_thresh = 7000
 
+        ## get only dryland cells
+        mask_wet       = np.isnan(self.mat_wetlands.reshape(-1))
+        mat_nonwet_dtw = self.mat_dtw[mask_wet]
+        mat_dry_dtw    = mat_nonwet_dtw[~np.isnan(mat_nonwet_dtw)].reshape(-1, mat_nonwet_dtw.shape[1])
 
+        # apply conditions
+        result = ((mat_dry_dtw <= dtw_thresh).sum(axis=1) > hrs_thresh).sum()
+        print (result)
 
 
     def optimize(self, increment=1):
@@ -216,4 +228,5 @@ PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
 res      = Wetlands(PATH_res)
 # res.optimize(increment=10)
-res.indicator_wets_only()
+# res.indicator_wets_only()
+res.apply_indicator()
