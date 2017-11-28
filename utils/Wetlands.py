@@ -1,5 +1,6 @@
 from AnalysisObjs import *
 import seaborn as sns
+import pickle
 
 class Wetlands(res_base):
     def __init__(self, path_results):
@@ -35,7 +36,7 @@ class Wetlands(res_base):
 
         return mat_dtw_trunc
 
-    def indicator(self, cutoff=-2500, show=False):
+    def indicator_all(self, cutoff=-2500, show=False):
         """ Compare results form 'developing indicator' to actual CCAP wetlands """
         ## get just highest cells (longest time at lowest DTW)
         mat_indicator = np.where(self.mat_dtw_sum <= cutoff, np.nan, self.mat_dtw_sum)
@@ -62,6 +63,39 @@ class Wetlands(res_base):
         # print ('Percent corretly identified: {} %\n'.format(round(performance, 3)))
         return (performance, count_correct, count_incorrect)
 
+    def indicator_wets_only(self):
+        """ Make an indicator that captures over 90 % of CCAP wetlands """
+        ### select wetland from all dtw information
+        mask_wet    = np.isnan(self.mat_wetlands.reshape(-1))
+        mat_wet_dtw = self.mat_dtw[~mask_wet]
+        # print (mat_wet_dtw[0:5,0:5]
+        result     = []
+        # good       = []
+        dtw_thresh = []
+        hrs_thresh = []
+        for dtw_test in np.arange(0, 1, 0.01):
+            for hrs_test in range(5000, self.mat_dtw.shape[1]):
+                result.append(((mat_wet_dtw <= dtw_test).sum(axis=1) > hrs_test).sum())
+
+                dtw_thresh.append(dtw_test)
+                hrs_thresh.append(hrs_test)
+                # if float(result[-1]) / mat_wet_dtw.shape[0] >= 0.9:
+                #     good.append(result[-1])
+
+        results = list(zip(result, dtw_thresh, hrs_thresh))
+        optimal = max(results, key=lambda item:item[0])
+
+        ### 0.9001 / 5000 gets all
+        with open ('indicator_results.lst', 'w') as fh:
+            pickle.dump(results, fh)
+        print (optimal)
+
+        return
+
+
+
+
+
     def optimize(self, increment=1):
         """ Maximize the percent correctly identiified """
         optimal     = []
@@ -70,7 +104,7 @@ class Wetlands(res_base):
         n_incorrect = []
         for test in np.arange(np.floor(np.nanmin(self.mat_dtw_sum)), 0, increment):
             # print('Cutoff: {}'.format(test))
-            result, n_corr, n_incorr = self.indicator(test)
+            result, n_corr, n_incorr = self.indicator_all(test)
             optimal.append(result)
             n_correct.append(n_corr)
             n_incorrect.append(n_incorr)
@@ -90,7 +124,7 @@ class Wetlands(res_base):
         Make histogram of cells, show their locations
         Show cells above cutoff and wetland locations
         """
-        mat_highest = self.indicator(cut, show=True)
+        mat_highest = self.indicator_all(cut, show=True)
         mask = np.isnan(self.mat_dtw_sum)
         bins = np.linspace(-5000, 0, 21)
 
@@ -176,4 +210,5 @@ class Wetlands(res_base):
 PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
 res      = Wetlands(PATH_res)
-res.optimize(increment=10)
+# res.optimize(increment=10)
+res.indicator_wets_only()
