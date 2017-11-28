@@ -68,27 +68,32 @@ class Wetlands(res_base):
         ### select wetland from all dtw information
         mask_wet    = np.isnan(self.mat_wetlands.reshape(-1))
         mat_wet_dtw = self.mat_dtw[~mask_wet]
-        # print (mat_wet_dtw[0:5,0:5]
-        result     = []
-        # good       = []
-        dtw_thresh = []
-        hrs_thresh = []
-        for dtw_test in np.arange(0, 1, 0.01):
-            for hrs_test in range(5000, self.mat_dtw.shape[1]):
-                result.append(((mat_wet_dtw <= dtw_test).sum(axis=1) > hrs_test).sum())
 
-                dtw_thresh.append(dtw_test)
-                hrs_thresh.append(hrs_test)
-                # if float(result[-1]) / mat_wet_dtw.shape[0] >= 0.9:
-                #     good.append(result[-1])
+        if op.exists('indicator_results1.lst'):
+            with open('indicator_results.lst') as fh:
+                results = pickle.load(fh)
 
-        results = list(zip(result, dtw_thresh, hrs_thresh))
-        optimal = max(results, key=lambda item:item[0])
+            results_sorted = (sorted(results, reverse=True, key=lambda item: item[2]))
 
-        ### 0.9001 / 5000 gets all
-        with open ('indicator_results.lst', 'w') as fh:
-            pickle.dump(results, fh)
-        print (optimal)
+        else:
+            dtw_tests = np.arange(0, 1, 0.01)
+            hrs_tests = range(5000, self.mat_dtw.shape[1])
+            mat_all   = np.zeros([len(dtw_tests) * len(hrs_tests), 4])
+
+            for i, dtw_test in enumerate(dtw_tests):
+                for j, hrs_test in enumerate(hrs_tests):
+                    result = ((mat_wet_dtw <= dtw_test).sum(axis=1) > hrs_test).sum()
+                    mat_all[i*len(hrs_tests)+j, 0] = result
+                    mat_all[i*len(hrs_tests)+j, 1] = dtw_test
+                    mat_all[i*len(hrs_tests)+j, 2] = hrs_test
+
+
+            mat_good       = mat_all[mat_all[:,0]>0]
+            mat_good[:, 3] = mat_good[:,0]/float(mat_wet_dtw.shape[0])
+            mat_best       = mat_good[mat_good[:,3] >= 0.90]
+            np.save('indicator_result.npy', mat_best)
+
+            # print (optimal)
 
         return
 
