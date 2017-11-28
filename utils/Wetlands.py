@@ -44,36 +44,46 @@ class Wetlands(res_base):
             print ('Wetland cells: {}'.format(np.count_nonzero(~np.isnan(self.mat_wetlands))))
             return mat_indicator
 
-        ### REFACTOR THIS FOR SPEED ###
+        mask_wet = np.isnan(self.mat_wetlands.reshape(-1))
+        mat_ind  = mat_indicator[~mask_wet & ~np.isnan(mat_indicator)]
+
         df_ind = pd.DataFrame(mat_indicator.reshape(-1)).dropna()
         df_wet = pd.DataFrame(self.mat_wetlands.reshape(-1)).dropna()
 
         ## get count of how many correct
-        count_correct   = (sum(df_wet.index.isin(df_ind.index)))
+        count_correct   = (len(mat_ind))
         ## get count of how many incorrect
-        count_incorrect = (len(df_ind) - count_correct)
+        count_incorrect = (len(mat_indicator[~np.isnan(mat_indicator)]) - len(mat_ind))
         # print ('Correct: {}'.format(count_correct))
         # print ('Incorrect: {}'.format(count_incorrect))
 
-
-        ## performance
-        performance     = (count_correct - count_incorrect) / float(len(df_wet)) * 100
-        # print ('Percent correctly identified: {} %\n'.format(round(performance, 3)))
-        return performance
+        # performance     = (float(count_correct) / float(count_incorrect)  * 100.
+        performance     = (count_correct - count_incorrect) / float(np.count_nonzero(~mask_wet)) * 100
+        # print ('Percent corretly identified: {} %\n'.format(round(performance, 3)))
+        return (performance, count_correct, count_incorrect)
 
     def optimize(self, increment=1):
         """ Maximize the percent correctly identiified """
-        optimal = []
-        cutoff  = []
+        optimal     = []
+        cutoff      = []
+        n_correct   = []
+        n_incorrect = []
         for test in np.arange(np.floor(np.nanmin(self.mat_dtw_sum)), 0, increment):
             # print('Cutoff: {}'.format(test))
-            result = self.indicator(test)
+            result, n_corr, n_incorr = self.indicator(test)
             optimal.append(result)
+            n_correct.append(n_corr)
+            n_incorrect.append(n_incorr)
             cutoff.append(test)
 
-        res_pairs = list(zip(optimal, cutoff))
-        optimal   = (max(res_pairs, key=lambda item:item[0]))
-        print (round(optimal[0], 4), optimal[1])
+        results = list(zip(optimal, n_correct, n_incorrect, cutoff))
+        optimal   = (max(results, key=lambda item:item[0]))
+        # sorted_by_incorrect = sorted(results, reverse=True, key=lambda item: item[0])
+
+        print ('Performance?  {}'.format(round(optimal[0], 4)))
+        print ('Correct: {}'.format(optimal[1]))
+        print ('Incorrect: {}'.format(optimal[2]))
+        print ('Cutoff: {}'.format(optimal[3]))
 
     def plot_indicators(self, cut=-2500):
         """
@@ -166,5 +176,4 @@ class Wetlands(res_base):
 PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
 res      = Wetlands(PATH_res)
-# res.optimize()
-res.plot_indicators()
+res.optimize(increment=10)

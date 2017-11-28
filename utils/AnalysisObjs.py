@@ -8,7 +8,7 @@ import BB
 import os
 import os.path as op
 import swmmtoolbox as swmtbx
-from components import bcpl
+from   components import bcpl
 
 from collections import OrderedDict
 import random
