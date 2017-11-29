@@ -1,4 +1,5 @@
 from AnalysisObjs import *
+import time
 import seaborn as sns
 import pickle
 
@@ -62,7 +63,7 @@ class Wetlands(res_base):
         # print ('Percent corretly identified: {} %\n'.format(round(performance, 3)))
         return (performance, count_correct, count_incorrect)
 
-    def indicator_wets_only(self, make_new=False):
+    def indicator_wets_only(self, dtw_inc=0.01, hrs_beg=4000, make_new=False):
         """ Make an indicator that captures over 90 % of CCAP wetlands """
         ### select wetland from all dtw information
         mat_wet_dtw    = self.mat_dtw[~self.mask_wet]
@@ -77,8 +78,8 @@ class Wetlands(res_base):
 
         else:
             print ('Finding optimum criteria; will take a bit')
-            dtw_tests = np.arange(0, 1, 0.01)
-            hrs_tests = range(3000, self.mat_dtw.shape[1])
+            dtw_tests = np.arange(0, 1, dtw_inc)
+            hrs_tests = range(hrs_beg, self.mat_dtw.shape[1])
             mat_all   = np.zeros([len(dtw_tests) * len(hrs_tests), 7])
 
             for i, dtw_test in enumerate(dtw_tests):
@@ -233,10 +234,14 @@ class Wetlands(res_base):
         df_drys = df_dtw[~df_dtw.index.isin(df_wet.Zone)].dropna()
         return df_wets, df_drys
 
+start    = time.time()
 PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
 res      = Wetlands(PATH_res)
 # res.optimize(increment=10)
-res.indicator_wets_only(make_new=True)
+res.indicator_wets_only(dtw_inc=0.01, hrs_beg=4000, make_new=True)
 # res.apply_indicator()
 # res.minimum_drys(make_new=True)
+end      = time.time()
+
+print ('Elapsed time: {} min'.format(round((end-start)/60.), 4))
