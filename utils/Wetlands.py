@@ -77,7 +77,7 @@ class Wetlands(res_base):
 
         else:
             print ('Finding optimum criteria; will take a bit')
-            dtw_tests = np.arange(0, 1, 0.1)
+            dtw_tests = np.arange(0, 1, 0.01)
             hrs_tests = range(3000, self.mat_dtw.shape[1])
             mat_all   = np.zeros([len(dtw_tests) * len(hrs_tests), 7])
 
@@ -93,15 +93,17 @@ class Wetlands(res_base):
             mat_good       = mat_all[mat_all[:,2]>0]
             mat_good[:, 3] = mat_good[:,2]/float(mat_wet_dtw.shape[0])
             mat_best       = mat_good[mat_good[:,4] >= 0.90]
-            mat_best[:, 5] = 1 - ((mat_best[:,4]) / float(mat_dry_dtw.shape[0]))
-            mat_best[:, 6] = mat_best[:,3] / (mat_best[:,5])
+            mat_best[:, 5] = mat_best[:,4] / float(mat_dry_dtw.shape[0])
+            mat_best[:, 6] = mat_best[:,3] / (1 - (mat_best[:,5]))
             colnames = ['dtw_thresh', 'hrs_thresh', 'n_wet', 'perWet', 'n_dry', 'perDry', 'perRatio']
-            df_all  = pd.DataFrame(mat_best, columns=colnames).sort_values(by='perRatio')
+            df_all  = pd.DataFrame(mat_best, columns=colnames).sort_values(by='perRatio', ascending=False)
 
             np.save(op.join(self.path_data, 'dtw_hrs_wet_dry.npy'), mat_best)
             df_all.to_pickle(op.join(self.path_data, 'dtw_hrs_wet_dry.df'))
 
-            print (df_all.head(10))
+        ## do some cropping
+        df_new = df_all[df_all.hrs_thresh > 7000]
+        BB.print_all (df_new.head(250))
 
         return mat_all, df_all
 
