@@ -63,7 +63,7 @@ class Wetlands(res_base):
         # print ('Percent corretly identified: {} %\n'.format(round(performance, 3)))
         return (performance, count_correct, count_incorrect)
 
-    def indicator_wets_only(self, dtw_inc=0.01, hrs_beg=4000, make_new=False):
+    def make_indicator(self, dtw_inc=0.01, hrs_beg=4000):
         """ Make an indicator that captures over 90 % of CCAP wetlands """
         ### select wetland from all dtw information
         mat_wet_dtw    = self.mat_dtw[~self.mask_wet]
@@ -71,57 +71,52 @@ class Wetlands(res_base):
         mat_dry_dtw    = mat_nonwet_dtw[~np.isnan(mat_nonwet_dtw)].reshape(
                                                 -1, mat_nonwet_dtw.shape[1])
 
-        if op.exists(op.join(self.path_data, 'dtw_hrs_wet_dry.npy')) and not make_new:
-            mat_all = np.load(op.join(self.path_data, 'dtw_hrs_wet_dry.npy'))
-            df_all  = pd.read_pickle(op.join(self.path_data, 'dtw_hrs_wet_dry.df'))
-            print ('Loaded mat and df of dtw/hrs for wet and drylands')
+        print ('Finding optimum criteria; will take a bit')
+        dtw_tests = np.arange(0, 1, dtw_inc)
+        hrs_tests = range(hrs_beg, self.mat_dtw.shape[1])
+        mat_all   = np.zeros([len(dtw_tests) * len(hrs_tests), 7])
 
-        else:
-            print ('Finding optimum criteria; will take a bit')
-            dtw_tests = np.arange(0, 1, dtw_inc)
-            hrs_tests = range(hrs_beg, self.mat_dtw.shape[1])
-            mat_all   = np.zeros([len(dtw_tests) * len(hrs_tests), 7])
+        for i, dtw_test in enumerate(dtw_tests):
+            for j, hrs_test in enumerate(hrs_tests):
+                res_wet = ((mat_wet_dtw <= dtw_test).sum(axis=1) > hrs_test).sum()
+                res_dry = ((mat_dry_dtw <= dtw_test).sum(axis=1) > hrs_test).sum()
+                mat_all[i*len(hrs_tests)+j, 0] = dtw_test
+                mat_all[i*len(hrs_tests)+j, 1] = hrs_test
+                mat_all[i*len(hrs_tests)+j, 2] = res_wet
+                mat_all[i*len(hrs_tests)+j, 4] = res_dry
 
-            for i, dtw_test in enumerate(dtw_tests):
-                for j, hrs_test in enumerate(hrs_tests):
-                    res_wet = ((mat_wet_dtw <= dtw_test).sum(axis=1) > hrs_test).sum()
-                    res_dry = ((mat_dry_dtw <= dtw_test).sum(axis=1) > hrs_test).sum()
-                    mat_all[i*len(hrs_tests)+j, 0] = dtw_test
-                    mat_all[i*len(hrs_tests)+j, 1] = hrs_test
-                    mat_all[i*len(hrs_tests)+j, 2] = res_wet
-                    mat_all[i*len(hrs_tests)+j, 4] = res_dry
+        mat_good       = mat_all[mat_all[:,2]>0]
+        mat_good[:, 3] = mat_good[:,2]/float(mat_wet_dtw.shape[0])
+        mat_best       = mat_good[mat_good[:,4] >= 0.90]
+        mat_best[:, 5] = mat_best[:,4] / float(mat_dry_dtw.shape[0])
+        mat_best[:, 6] = mat_best[:,3] / (1 - (mat_best[:,5]))
+        colnames = ['dtw_thresh', 'hrs_thresh', 'n_wet', 'perWet', 'n_dry', 'perDry', 'perRatio']
+        df_all  = pd.DataFrame(mat_best, columns=colnames).sort_values(by='perRatio', ascending=False)
 
-            mat_good       = mat_all[mat_all[:,2]>0]
-            mat_good[:, 3] = mat_good[:,2]/float(mat_wet_dtw.shape[0])
-            mat_best       = mat_good[mat_good[:,4] >= 0.90]
-            mat_best[:, 5] = mat_best[:,4] / float(mat_dry_dtw.shape[0])
-            mat_best[:, 6] = mat_best[:,3] / (1 - (mat_best[:,5]))
-            colnames = ['dtw_thresh', 'hrs_thresh', 'n_wet', 'perWet', 'n_dry', 'perDry', 'perRatio']
-            df_all  = pd.DataFrame(mat_best, columns=colnames).sort_values(by='perRatio', ascending=False)
-
-            np.save(op.join(self.path_data, 'dtw_hrs_wet_dry.npy'), mat_best)
-            df_all.to_pickle(op.join(self.path_data, 'dtw_hrs_wet_dry.df'))
-
-        ## do some cropping
-        df_new = df_all[df_all.hrs_thresh > 7000]
-        BB.print_all (df_new.head(250))
+        answered = False
+        while not answered:
+            overwrite = raw_input('Overwrite pickles? (y/n) ')
+            if overwrite == 'y':
+                np.save(op.join(self.path_data, 'dtw_hrs_wet_dry.npy'), mat_best)
+                df_all.to_pickle(op.join(self.path_data, 'dtw_hrs_wet_dry.df'))
+                answered = True
+            elif overwrite == 'n':
+                print ('Not overwriting pickles')
+                answered = True
+            else:
+                print ('Choose y or n')
 
         return mat_all, df_all
 
-    ### possibly deprecated since optimizing with indicator_wets
     def apply_indicator(self):
-        """ Test the indicator developed using indicator_wets_only on drys """
-        ### eventually return these from other func
-        dtw_thresh = 0.301
-        hrs_thresh = 7000
+        """ Analyze the indicator developed using make_indicator """
+        mat_all = np.load(op.join(self.path_data, 'dtw_hrs_wet_dry.npy'))
+        df_all  = pd.read_pickle(op.join(self.path_data, 'dtw_hrs_wet_dry.df'))
 
-        ## get only dryland cells
-        mat_nonwet_dtw = self.mat_dtw[self.mask_wet]
-        mat_dry_dtw    = mat_nonwet_dtw[~np.isnan(mat_nonwet_dtw)].reshape(-1, mat_nonwet_dtw.shape[1])
+        ## do some cropping
+        df_new = df_all[df_all.hrs_thresh > 5000].sort_values(by=['n_dry', 'n_wet'], ascending=[False, True])
 
-        # apply conditions
-        result = ((mat_dry_dtw <= dtw_thresh).sum(axis=1) > hrs_thresh).sum()
-        print (result)
+        BB.print_all(df_new.head(250))
 
     def optimize(self, increment=1):
         """ Maximize the percent correctly identiified """
@@ -234,14 +229,14 @@ class Wetlands(res_base):
         df_drys = df_dtw[~df_dtw.index.isin(df_wet.Zone)].dropna()
         return df_wets, df_drys
 
+
 start    = time.time()
 PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
 res      = Wetlands(PATH_res)
 # res.optimize(increment=10)
-res.indicator_wets_only(dtw_inc=0.01, hrs_beg=4000, make_new=True)
-# res.apply_indicator()
-# res.minimum_drys(make_new=True)
+# res.make_indicator(dtw_inc=0.01, hrs_beg=4000)
+res.apply_indicator()
 end      = time.time()
 
 print ('Elapsed time: {} min'.format(round((end-start)/60.), 4))
