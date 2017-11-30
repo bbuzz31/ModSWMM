@@ -63,17 +63,34 @@ class Wetlands(res_base):
         # print ('Percent corretly identified: {} %\n'.format(round(performance, 3)))
         return (performance, count_correct, count_incorrect)
 
-    def make_indicator(self, dtw_inc=0.01, hrs_beg=4000):
-        """ Make an indicator that captures over 90 % of CCAP wetlands """
+    def make_indicator(self, dtw_inc=0.01, hrs_per=50, seasonal=False):
+        """
+        Make an indicator by iterating over depth to water and hours at that dtw
+        dtw_inc  = dtw increment, use 0.01 for increased precision (expensive)
+        hrs_per  = percent of total hours to begin minimum threshold
+        seasonal = search just summer?
+        """
+        start    = time.time()
         ### select wetland from all dtw information
         mat_wet_dtw    = self.mat_dtw[~self.mask_wet]
         mat_nonwet_dtw = self.mat_dtw[self.mask_wet]
         mat_dry_dtw    = mat_nonwet_dtw[~np.isnan(mat_nonwet_dtw)].reshape(
                                                 -1, mat_nonwet_dtw.shape[1])
+        names = ['dtw_hrs_wet_dry.npy', 'dtw_hrs_wet_dry.df']
+        ## truncate for just summer
+        if seasonal:
+            summer      = pd.date_range('2012-06-01-00', '2012-09-01-00', freq='h')
+            df_wet_dtw1 = pd.DataFrame(mat_wet_dtw.T, index=self.ts_yr_hr)
+            df_wet_dtw  = pd.DataFrame(mat_wet_dtw.T, index=self.ts_yr_hr).loc[summer, :]
+
+            df_dry_dtw  = pd.DataFrame(mat_dry_dtw.T, index=self.ts_yr_hr).loc[summer, :]
+            mat_wet_dtw = df_wet_dtw.values.T
+            mat_dry_dtw = df_dry_dtw.values.T
+            names       = ['dtw_hrs_wet_dry_summer.npy', 'dtw_hrs_wet_dry_summer.df']
 
         print ('Finding optimum criteria; will take a bit')
         dtw_tests = np.arange(0, 1, dtw_inc)
-        hrs_tests = range(hrs_beg, self.mat_dtw.shape[1])
+        hrs_tests = range(int(np.floor(1./hrs_per)*self.mat_dtw.shape[1]), self.mat_dtw.shape[1])
         mat_all   = np.zeros([len(dtw_tests) * len(hrs_tests), 7])
 
         for i, dtw_test in enumerate(dtw_tests):
@@ -87,18 +104,19 @@ class Wetlands(res_base):
 
         mat_good       = mat_all[mat_all[:,2]>0]
         mat_good[:, 3] = mat_good[:,2]/float(mat_wet_dtw.shape[0])
-        mat_best       = mat_good[mat_good[:,4] >= 0.90]
+        mat_best       = mat_good[mat_good[:,3] >= 0.50]
         mat_best[:, 5] = mat_best[:,4] / float(mat_dry_dtw.shape[0])
         mat_best[:, 6] = mat_best[:,3] / (1 - (mat_best[:,5]))
         colnames = ['dtw_thresh', 'hrs_thresh', 'n_wet', 'perWet', 'n_dry', 'perDry', 'perRatio']
         df_all  = pd.DataFrame(mat_best, columns=colnames).sort_values(by='perRatio', ascending=False)
 
         answered = False
+        end      = time.time()
         while not answered:
             overwrite = raw_input('Overwrite pickles? (y/n) ')
             if overwrite == 'y':
-                np.save(op.join(self.path_data, 'dtw_hrs_wet_dry.npy'), mat_best)
-                df_all.to_pickle(op.join(self.path_data, 'dtw_hrs_wet_dry.df'))
+                np.save(op.join(self.path_data, names[0]), mat_best)
+                df_all.to_pickle(op.join(self.path_data, names[1]))
                 answered = True
             elif overwrite == 'n':
                 print ('Not overwriting pickles')
@@ -106,17 +124,32 @@ class Wetlands(res_base):
             else:
                 print ('Choose y or n')
 
-        return mat_all, df_all
+        print ('Elapsed time: ~{} min'.format(round((end-start)/60.), 4))
 
-    def apply_indicator(self):
+    def apply_indicator(self, seasonal=False):
         """ Analyze the indicator developed using make_indicator """
-        mat_all = np.load(op.join(self.path_data, 'dtw_hrs_wet_dry.npy'))
-        df_all  = pd.read_pickle(op.join(self.path_data, 'dtw_hrs_wet_dry.df'))
-
+        if seasonal:
+            names = ['dtw_hrs_wet_dry_summer.npy', 'dtw_hrs_wet_dry_summer.df']
+            perWet_thresh = 0.61
+            perDry_thresh = 0.35
+        else:
+            names = ['dtw_hrs_wet_dry.npy', 'dtw_hrs_wet_dry.df']
+            perWet_thresh = 0.645
+            perDry_thresh = 0.35
+        mat_all = np.load(op.join(self.path_data, names[0]))
+        df_all  = pd.read_pickle(op.join(self.path_data, names[1]))
+        # print (df_all.head(25))
         ## do some cropping
-        df_new = df_all[df_all.hrs_thresh > 5000].sort_values(by=['n_dry', 'n_wet'], ascending=[False, True])
+        df_new = (df_all[((df_all.hrs_thresh > df_all.hrs_thresh.max()/2.) &
+                                          (df_all.perWet > perWet_thresh) &
+                                          (df_all.perDry < perDry_thresh))]
+                                          .sort_values(by=['perDry', 'perWet'],
+                                          ascending=[True, False]))
 
-        BB.print_all(df_new.head(250))
+        ### can get about 1/2 the wetlands and 1/4 of the uplands
+        ### best for all is ~ 65% wetlands, 35% of drylands
+        ### best for summer is ~ 61% wetlands and 34.4% of drylands
+        BB.print_all(df_new)
 
     def optimize(self, increment=1):
         """ Maximize the percent correctly identiified """
@@ -230,13 +263,9 @@ class Wetlands(res_base):
         return df_wets, df_drys
 
 
-start    = time.time()
 PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
 res      = Wetlands(PATH_res)
 # res.optimize(increment=10)
-# res.make_indicator(dtw_inc=0.01, hrs_beg=4000)
-res.apply_indicator()
-end      = time.time()
-
-print ('Elapsed time: {} min'.format(round((end-start)/60.), 4))
+# res.make_indicator(dtw_inc=0.01, hrs_per=50, seasonal=True)
+res.apply_indicator(seasonal=True)
