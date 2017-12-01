@@ -4,11 +4,9 @@ import seaborn as sns
 import pickle
 
 class Wetlands(res_base):
-    def __init__(self, path_results, dtw_inc=0.01, hrs_per=50, z_thresh=3.75):
+    def __init__(self, path_results, z_thresh=3.75):
         super(Wetlands, self).__init__(path_results)
         self.path_res                         = path_results
-        self.dtw_inc                          = dtw_inc
-        self.hrs_per                          = 50
         self.z_thresh                         = 3.75
         self.mat_dtw, self.mat_dtw_masked     = self._make_dtw()
         self.df_wets, self.mat_wets           = self._ccap_wetlands()
@@ -50,7 +48,7 @@ class Wetlands(res_base):
 
         return mat_dtw_trunc, mask_z
 
-    def make_indicator(self, masked=True, seasonal=False):
+    def make_indicator(self, dtw_inc=0.01, hrs_per=50, masked=True, seasonal=False):
         """
         Make an indicator by iterating over depth to water and hours at that dtw
         dtw_inc  = dtw increment, use 0.01 for increased precision (expensive)
@@ -73,11 +71,6 @@ class Wetlands(res_base):
         mat_nonwet_dtw = mat_dtw[mask_wet]
         mat_dry_dtw    = mat_nonwet_dtw[~np.isnan(mat_nonwet_dtw)].reshape(
                                                 -1, mat_nonwet_dtw.shape[1])
-
-        ## to view the amount of wetlands and drylands working with
-        # print (mat_wet_dtw.shape)
-        # print (mat_dry_dtw.shape)
-
         ## truncate for just summer
         if seasonal:
             df_wet_dtw1 = pd.DataFrame(mat_wet_dtw.T, index=self.ts_yr_hr)
@@ -86,11 +79,13 @@ class Wetlands(res_base):
             df_dry_dtw  = pd.DataFrame(mat_dry_dtw.T, index=self.ts_yr_hr).loc[self.summer, :]
             mat_wet_dtw = df_wet_dtw.values.T
             mat_dry_dtw = df_dry_dtw.values.T
-            names       = ['dtw_hrs_wet_dry_summer.npy', 'dtw_hrs_wet_dry_summer.df']
+            ## fix this to add to previously made name
+            names       = ['{}_summer'.format(n) for n in names]
 
+        ## to view the amount of wetlands and drylands working with
         print ('Finding optimum criteria; will take a bit')
-        dtw_tests = np.arange(0, 1, self.dtw_inc)
-        hrs_tests = range(int(np.floor(1./self.hrs_per)*self.mat_dtw.shape[1]), self.mat_dtw.shape[1])
+        dtw_tests = np.arange(0, 1, dtw_inc)
+        hrs_tests = range(int(hrs_per/100.*self.mat_dtw.shape[1]), self.mat_dtw.shape[1])
         mat_all   = np.zeros([len(dtw_tests) * len(hrs_tests), 7])
 
         for i, dtw_test in enumerate(dtw_tests):
@@ -126,18 +121,25 @@ class Wetlands(res_base):
 
         print ('Elapsed time: ~{} min'.format(round((end-start)/60.), 4))
 
-    def apply_indicator(self, seasonal=False):
+    def apply_indicator(self, z=True, seasonal=False):
         """ Analyze the indicator developed using make_indicator """
-        if seasonal:
+        if seasonal and not z:
             names = ['dtw_hrs_wet_dry_summer.npy', 'dtw_hrs_wet_dry_summer.df']
             perWet_thresh = 0.61
             perDry_thresh = 0.35
-        else:
+        elif not z:
             names = ['dtw_hrs_wet_dry.npy', 'dtw_hrs_wet_dry.df']
             perWet_thresh = 0.645
             perDry_thresh = 0.35
+        elif z and not seasonal:
+            names = ['dtw_hrs_wet_dry_masked.npy', 'dtw_hrs_wet_dry_masked.df']
+            perWet_thresh = 0.7
+            perDry_thresh = 0.4
+
         mat_all = np.load(op.join(self.path_data, names[0]))
         df_all  = pd.read_pickle(op.join(self.path_data, names[1]))
+        print (df_all.shape)
+        return
         # print (df_all.head(25))
         ## do some cropping
         df_new = (df_all[((df_all.hrs_thresh > df_all.hrs_thresh.max()/2.) &
@@ -197,8 +199,7 @@ class Wetlands(res_base):
                        xlabel='# Wetlands: {}'.format(
                        df[((df['dry']==0) | (df['dry']==1))].shape[0]),
                        )
-            if test:
-                break
+            if test: break
 
         cbar_ax   = fig.add_axes([0.945, 0.12, 0.025, 0.75])
 
@@ -352,13 +353,12 @@ class Wetlands(res_base):
 
 PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
-res      = Wetlands(PATH_res, dtw_inc=0.01, hrs_per=50, z_thresh=3.75)
+res      = Wetlands(PATH_res, z_thresh=3.75)
 # res.optimize(increment=10)
-# res.make_indicator(masked=True, seasonal=False)
-# res.apply_indicator(seasonal=False)
+res.make_indicator(dtw_inc=0.01, hrs_per=50, masked=True, seasonal=False)
 
 ## nonseasonal indicators: dtw < 0.05; hrs_thresh>4443 --------- best
 ## seasonal indicators   : dtw < 0.17; hrs_thresh > 1211
 
-res.find_cells(0.05, hrs_thresh=4442)
-res.plot_wets_drys()
+# res.find_cells(0.05, hrs_thresh=4442)
+# res.plot_wets_drys()
