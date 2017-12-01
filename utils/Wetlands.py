@@ -16,7 +16,7 @@ class Wetlands(res_base):
         # highest values (closest to 0) = most hours with lowest DTW
         self.mat_dtw_sum = (self.mat_dtw * -1).sum(axis=1)
         self.summer      = pd.date_range('2012-06-01-00', '2012-09-01-00', freq='h')
-
+        
     def _ccap_wetlands(self):
         """ Get CCAP wetlands df and full matrix grid """
         df_subs = pd.read_csv(op.join(self.path_data, 'SWMM_subs.csv'))
@@ -151,7 +151,7 @@ class Wetlands(res_base):
         ### best for summer is ~ 61% wetlands and 34.4% of drylands
         BB.print_all(df_new)
 
-    def find_cells(self, dtw_thresh=0.01, hrs_thresh=4442):
+    def find_cells(self, dtw_thresh=0.05, hrs_thresh=4442):
         """ Find locations that meet the threshold conditions """
         df_dtw = pd.DataFrame(self.mat_dtw, columns=self.ts_yr_hr)
 
@@ -167,12 +167,53 @@ class Wetlands(res_base):
                             left_index=True, right_index=True, how='outer')
         df_passed      = df_merged[df_merged['wet_test']]
 
-        df_low         = df_passed[df_passed.Esurf <= z_thresh]
-        df_passed_wets = df_low[df_low.index.isin(self.df_wets.Zone)]
-        df_passed_drys = df_low[~df_low.index.isin(self.df_wets.Zone)]
+        df_low         = df_passed[df_passed.Esurf <= self.z_thresh]
+        # df_passed_wets = df_low[df_low.index.isin(self.df_wets.Zone)]
+        # df_passed_drys = df_low[~df_low.index.isin(self.df_wets.Zone)]
+        df_low['dry']  = df_low.index.map(lambda x: -1 if x in self.df_wets.loc[:, 'Zone'].values else 0)
 
-        print ('Wets: {}'.format(df_passed_wets.shape[0]))
-        print ('Drys: {}'.format(df_passed_drys.shape[0]))
+        print ('Wets: {}'.format(df_low[df_low['dry']<0].shape[0]))
+        print ('Drys: {}'.format(df_low[df_low['dry']==0].shape[0]))
+        # return df_passed_wets, df_passed_drys
+        return df_low
+
+
+    def plot_wets_drys(self):
+        df_lows = self.find_cells(dtw_thresh=0.05, hrs_thresh=4442)
+
+        ## change value for cells not considered (visualization purposes)
+        df_subs        = pd.DataFrame(index=self.df_swmm.index)
+        df_subs['dry'] = df_subs.index.map(lambda x: df_lows.loc[x, 'dry']
+                                            if x in df_lows.index.values else 1)
+
+        ## converts dfs to matrixes
+        mat_lows  = res_base.fill_grid(df_subs.dry, fill_value=-2)
+
+        fig, axes = plt.subplots(ncols=3, sharey=True)
+        axe       = axes.ravel()
+        # cm        = plt.get_cmap('coolwarm')
+        cm        = mpl.colors.ListedColormap(['black', 'blue', 'green', 'gray'])
+        # axe       = axes.ravel()
+        for i, ax in enumerate(axes.ravel()):
+            im        = axe[i].imshow(mat_lows.reshape(self.nrows, self.ncols), cmap=cm)
+
+            axe[i].set(title='SLR: {}'.format(0.0),
+                       xlabel='# Wetlands: {}'.format(
+                       df_lows[((df_lows['dry']==0) | (df_lows['dry']==1))].shape[0]),
+                       )
+
+        cbar_ax   = fig.add_axes([0.945, 0.18, 0.025, 0.62])
+
+        cbar      = fig.colorbar(im, cbar_ax, spacing='proportional')
+        cbar.ax.get_yaxis().set_ticks([])
+        cbar.ax.set_xlabel('Legend', fontsize=12, labelpad=10)
+        cbar.ax.xaxis.set_label_position('top')
+        for j, lab in enumerate(['inactive','wetland (CCAP)','wetland(nonCCAP)','upland']):
+            cbar.ax.text(.5, (2 * j + 1) / 8.0, lab, ha='center', va='center',
+                        bbox=dict(facecolor='white', alpha=0.75), rotation=90)
+
+        fig.subplots_adjust(left=0.05, right=0.915, wspace=0.25, hspace=0.25)
+        plt.show()
 
     def optimize(self, increment=1):
         """ Maximize the percent correctly identiified """
@@ -248,6 +289,7 @@ class Wetlands(res_base):
         performance     = (count_correct - count_incorrect) / float(np.count_nonzero(~mask_wet)) * 100
         # print ('Percent corretly identified: {} %\n'.format(round(performance, 3)))
         return (performance, count_correct, count_incorrect)
+
     ### probably useless
     def dtw_wet_all(self, transpose=False):
         """ Separate ALL dtw / cells / times by wetlands/nonwetland """
@@ -314,10 +356,11 @@ PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
 res      = Wetlands(PATH_res, dtw_inc=0.01, hrs_per=50, z_thresh=3.75)
 # res.optimize(increment=10)
-res.make_indicator(masked=True, seasonal=False)
+# res.make_indicator(masked=True, seasonal=False)
 # res.apply_indicator(seasonal=False)
 
 ## nonseasonal indicators: dtw < 0.05; hrs_thresh>4443 --------- best
 ## seasonal indicators   : dtw < 0.17; hrs_thresh > 1211
 
 # res.find_cells()
+res.plot_wets_drys()
