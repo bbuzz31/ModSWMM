@@ -8,10 +8,11 @@ class Wetlands(res_base):
         super(Wetlands, self).__init__(path_results)
         self.path_res    = path_results
         self.mat_dtw     = self._make_dtw()
-        self.df_subs, self.mat_wetlands = self._ccap_wetlands()
-        self.mask_wet    = np.isnan(self.mat_wetlands.reshape(-1))
+        self.df_wets, self.mat_wets = self._ccap_wetlands()
+        self.mask_wet    = np.isnan(self.mat_wets.reshape(-1))
         # highest values (closest to 0) = most hours with lowest DTW
         self.mat_dtw_sum = (self.mat_dtw * -1).sum(axis=1)
+        self.summer      = pd.date_range('2012-06-01-00', '2012-09-01-00', freq='h')
 
     def _ccap_wetlands(self):
         """ Get CCAP wetlands df and full matrix grid """
@@ -22,7 +23,9 @@ class Wetlands(res_base):
         mat_landcover = res_base.fill_grid(ser_landcover, fill_value=-1)
         mat_wetlands  = np.where(((mat_landcover < 13) | (mat_landcover > 18)),
                                             np.nan, mat_landcover)
-        return (df_subs, mat_wetlands)
+
+        df_wet  = df_subs[((df_subs.Majority >= 13) & (df_subs.Majority < 19))].iloc[:, :3]
+        return (df_wet, mat_wetlands)
 
     def _make_dtw(self, slr=0.0):
         """ dtw, all locations all times """
@@ -43,13 +46,13 @@ class Wetlands(res_base):
         mat_indicator = np.where(self.mat_dtw_sum <= cutoff, np.nan, self.mat_dtw_sum)
         if show:
             print ('Indicated cells: {}'.format(np.count_nonzero(~np.isnan(mat_indicator))))
-            print ('Wetland cells: {}'.format(np.count_nonzero(~np.isnan(self.mat_wetlands))))
+            print ('Wetland cells: {}'.format(np.count_nonzero(~np.isnan(self.mat_wets))))
             return mat_indicator
 
         mat_ind  = mat_indicator[~self.mask_wet & ~np.isnan(mat_indicator)]
 
         df_ind = pd.DataFrame(mat_indicator.reshape(-1)).dropna()
-        df_wet = pd.DataFrame(self.mat_wetlands.reshape(-1)).dropna()
+        df_wet = pd.DataFrame(self.mat_wets.reshape(-1)).dropna()
 
         ## get count of how many correct
         count_correct   = (len(mat_ind))
@@ -63,30 +66,32 @@ class Wetlands(res_base):
         # print ('Percent corretly identified: {} %\n'.format(round(performance, 3)))
         return (performance, count_correct, count_incorrect)
 
-    def make_indicator(self, dtw_inc=0.01, hrs_per=50, seasonal=False):
+    def make_indicator(self, dtw_inc=0.1, hrs_per=50, seasonal=False):
         """
         Make an indicator by iterating over depth to water and hours at that dtw
         dtw_inc  = dtw increment, use 0.01 for increased precision (expensive)
         hrs_per  = percent of total hours to begin minimum threshold
         seasonal = search just summer?
         """
-        start    = time.time()
+        start          = time.time()
         ### select wetland from all dtw information
         mat_wet_dtw    = self.mat_dtw[~self.mask_wet]
         mat_nonwet_dtw = self.mat_dtw[self.mask_wet]
         mat_dry_dtw    = mat_nonwet_dtw[~np.isnan(mat_nonwet_dtw)].reshape(
                                                 -1, mat_nonwet_dtw.shape[1])
-        names = ['dtw_hrs_wet_dry.npy', 'dtw_hrs_wet_dry.df']
+
+
+
+        names = ['dtw_hrs_wet_dry1.npy', 'dtw_hrs_wet_dry1.df']
         ## truncate for just summer
         if seasonal:
-            summer      = pd.date_range('2012-06-01-00', '2012-09-01-00', freq='h')
             df_wet_dtw1 = pd.DataFrame(mat_wet_dtw.T, index=self.ts_yr_hr)
-            df_wet_dtw  = pd.DataFrame(mat_wet_dtw.T, index=self.ts_yr_hr).loc[summer, :]
+            df_wet_dtw  = pd.DataFrame(mat_wet_dtw.T, index=self.ts_yr_hr).loc[self.summer, :]
 
-            df_dry_dtw  = pd.DataFrame(mat_dry_dtw.T, index=self.ts_yr_hr).loc[summer, :]
+            df_dry_dtw  = pd.DataFrame(mat_dry_dtw.T, index=self.ts_yr_hr).loc[self.summer, :]
             mat_wet_dtw = df_wet_dtw.values.T
             mat_dry_dtw = df_dry_dtw.values.T
-            names       = ['dtw_hrs_wet_dry_summer.npy', 'dtw_hrs_wet_dry_summer.df']
+            names       = ['dtw_hrs_wet_dry_summer1.npy', 'dtw_hrs_wet_dry_summer1.df']
 
         print ('Finding optimum criteria; will take a bit')
         dtw_tests = np.arange(0, 1, dtw_inc)
@@ -151,6 +156,32 @@ class Wetlands(res_base):
         ### best for summer is ~ 61% wetlands and 34.4% of drylands
         BB.print_all(df_new)
 
+    def find_cells(self, dtw_thresh=0.05, hrs_thresh=4442, z_thresh=1.0):
+        """ Find locations that meet the threshold conditions """
+        df_dtw = pd.DataFrame(self.mat_dtw, columns=self.ts_yr_hr)
+
+        ## number of hrs below dtw threshold
+        df_dtw['dtw_counts'] = ((df_dtw<=dtw_thresh).sum(axis=1))
+
+        ## put true if passed hrs threshold
+        df_dtw['wet_test']   = df_dtw.dtw_counts.apply(lambda x: True if x >= hrs_thresh else False)
+
+        ## attach elevation data ; zones col is one indexed in df_subs
+        df_dtw.index += 10001
+        df_merged = df_dtw.merge(self.df_swmm.loc[:, ['Esurf', 'Majority']],
+                            left_index=True, right_index=True, how='outer')
+        df_passed      = df_merged[df_merged['wet_test']]
+
+        df_low         = df_passed[df_passed.Esurf <= z_thresh]
+        df_passed_wets = df_low[df_low.index.isin(self.df_wets.Zone)]
+        df_passed_drys = df_low[~df_low.index.isin(self.df_wets.Zone)]
+
+        print ('Wets: {}'.format(df_passed_wets.shape[0]))
+        print ('Drys: {}'.format(df_passed_drys.shape[0]))
+
+
+
+
     def optimize(self, increment=1):
         """ Maximize the percent correctly identiified """
         optimal     = []
@@ -188,7 +219,7 @@ class Wetlands(res_base):
         axe[0].hist(self.mat_dtw_sum[~mask], bins=bins)
         axe[1].imshow(self.mat_dtw_sum.reshape(74, -1), cmap=plt.cm.jet)
         axe[2].imshow(mat_highest.reshape(74, -1), cmap=plt.cm.jet)
-        axe[3].imshow(self.mat_wetlands.reshape(74, -1), cmap=plt.cm.jet)
+        axe[3].imshow(self.mat_wets.reshape(74, -1), cmap=plt.cm.jet)
 
         titles = ['Hist of summed negative dtws', 'Total annual DTW',
                   'Locs of cells above dtw cutoff: {}'.format(cut), 'Locs of wetlands cells']
@@ -204,11 +235,10 @@ class Wetlands(res_base):
         """ Separate ALL dtw / cells / times by wetlands/nonwetland """
         ## convert to dtw for subsetting
         df_dtw  = pd.DataFrame(self.mat_dtw)
-        df_wet  = self.df_subs[((self.df_subs.Majority >= 13) & (self.df_subs.Majority < 19))].iloc[:, :3]
 
         df_dtw.index = range(10000, 13774)
-        df_wets = df_dtw[df_dtw.index.isin(df_wet.Zone)]
-        df_drys = df_dtw[~df_dtw.index.isin(df_wet.Zone)].dropna()
+        df_wets = df_dtw[df_dtw.index.isin(self.df_wets.Zone)]
+        df_drys = df_dtw[~df_dtw.index.isin(self.df_wets.Zone)].dropna()
         # print (df_wets.shape)
         # print (df_drys.shape)
         if transpose:
@@ -252,14 +282,13 @@ class Wetlands(res_base):
     ### probably useless
     def dtw_wet_avg_ann(self):
         """ Subset dtw df (all cells, annual average to just wetland cells """
-        df_wet  = self.df_subs[((self.df_subs.Majority >= 13) & (self.df_subs.Majority < 19))].iloc[:, :3]
 
         ## avg annual dtw
         df_dtw  = dtw(self.path_res).df_year
         df_dtw.columns = [str(col) for col in df_dtw.columns]
 
-        df_wets = df_dtw[df_dtw.index.isin(df_wet.Zone)]
-        df_drys = df_dtw[~df_dtw.index.isin(df_wet.Zone)].dropna()
+        df_wets = df_dtw[df_dtw.index.isin(self.df_wets.Zone)]
+        df_drys = df_dtw[~df_dtw.index.isin(self.df_wets.Zone)].dropna()
         return df_wets, df_drys
 
 
@@ -268,4 +297,9 @@ PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
 res      = Wetlands(PATH_res)
 # res.optimize(increment=10)
 # res.make_indicator(dtw_inc=0.01, hrs_per=50, seasonal=True)
-res.apply_indicator(seasonal=True)
+# res.apply_indicator(seasonal=False)
+
+## nonseasonal indicators: dtw < 0.05; hrs_thresh>4443 --------- best
+## seasonal indicators   : dtw < 0.17; hrs_thresh > 1211
+
+res.find_cells()
