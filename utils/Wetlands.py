@@ -8,7 +8,7 @@ class Wetlands(res_base):
         super(Wetlands, self).__init__(path_results)
         self.path_res                         = path_results
         self.z_thresh                         = 3.75
-        self.mat_dtw, self.mat_dtw_masked     = self._make_dtw()
+        self.mat_dtw, self.mask_z            = self._make_dtw()
         self.df_wets, self.mat_wets           = self._ccap_wetlands()
         self.mask_wet    = np.isnan(self.mat_wets.reshape(-1))
         # highest values (closest to 0) = most hours with lowest DTW
@@ -25,7 +25,14 @@ class Wetlands(res_base):
         mat_wetlands  = np.where(((mat_landcover < 13) | (mat_landcover > 18)),
                                             np.nan, mat_landcover)
 
+
+
+
+
         df_wet  = df_subs[((df_subs.Majority >= 13) & (df_subs.Majority < 19))].iloc[:, :3]
+
+
+
         return (df_wet, mat_wetlands)
 
     def _make_dtw(self, slr=0.0):
@@ -58,8 +65,8 @@ class Wetlands(res_base):
         start          = time.time()
         if masked:
             ### chop off cells whose elevation is too high
-            mat_dtw  = self.mat_dtw[self.mat_dtw_masked]
-            mask_wet = self.mask_wet[self.mat_dtw_masked]
+            mat_dtw  = self.mat_dtw[self.mask_z]
+            mask_wet = self.mask_wet[self.mask_z]
             names    = ['dtw_hrs_wet_dry_masked.npy', 'dtw_hrs_wet_dry_masked.df']
         else:
             mat_dtw  = self.mat_dtw
@@ -81,7 +88,8 @@ class Wetlands(res_base):
             mat_dry_dtw = df_dry_dtw.values.T
             ## fix this to add to previously made name
             names       = ['{}_summer'.format(n) for n in names]
-
+        print ('Wetlands shape: {}'.format(mat_wet_dtw.shape))
+        print ('Uplands shape: {}'.format(mat_dry_dtw.shape))
         ## to view the amount of wetlands and drylands working with
         print ('Finding optimum criteria; will take a bit')
         dtw_tests = np.arange(0, 1, dtw_inc)
@@ -133,14 +141,12 @@ class Wetlands(res_base):
             perDry_thresh = 0.35
         elif z and not seasonal:
             names = ['dtw_hrs_wet_dry_masked.npy', 'dtw_hrs_wet_dry_masked.df']
-            perWet_thresh = 0.7
-            perDry_thresh = 0.4
+            perWet_thresh = 0.616
+            perDry_thresh = 0.33
 
         mat_all = np.load(op.join(self.path_data, names[0]))
         df_all  = pd.read_pickle(op.join(self.path_data, names[1]))
-        print (df_all.shape)
-        return
-        # print (df_all.head(25))
+        df_all  = df_all[df_all.hrs_thresh>4000]
         ## do some cropping
         df_new = (df_all[((df_all.hrs_thresh > df_all.hrs_thresh.max()/2.) &
                                           (df_all.perWet > perWet_thresh) &
@@ -151,11 +157,15 @@ class Wetlands(res_base):
         ### can get about 1/2 the wetlands and 1/4 of the uplands
         ### best for all is ~ 65% wetlands, 35% of drylands
         ### best for summer is ~ 61% wetlands and 34.4% of drylands
+        ### best for z of 3.5 m is ~ 61% / 33%
         BB.print_all(df_new)
 
-    def find_cells(self, dtw_thresh=0.05, hrs_thresh=4442):
+    def find_cells(self, dtw_thresh=0.08, hrs_thresh=5185, one_slr=False):
         """ Find locations that meet the threshold conditions """
         slr_dict = OrderedDict()
+        if one_slr:
+            self.slr_sh = [0.0]
+
         for slr in self.slr_sh:
             mat_dtw = self._make_dtw(slr)[0]
 
@@ -180,8 +190,8 @@ class Wetlands(res_base):
         # return df_passed_wets, df_passed_drys
         return slr_dict
 
-    def plot_wets_drys(self, test=False):
-        slr_dict = self.find_cells(dtw_thresh=0.05, hrs_thresh=4442)
+    def plot_wets_drys(self, dtw_thresh=0.08, hrs_thresh=5185, test=False):
+        slr_dict = self.find_cells(dtw_thresh, hrs_thresh)
 
         fig, axes = plt.subplots(ncols=3, sharey=True)
         axe       = axes.ravel()
@@ -191,14 +201,13 @@ class Wetlands(res_base):
             ## change value for cells not considered (visualization purposes)
             df_subs['dry'] = df_subs.index.map(lambda x: df.loc[x, 'dry']
                                             if x in df.index.values else 1)
+            n_wets = df_subs[df_subs['dry']<0].shape[0] + df_subs[df_subs['dry']==0].shape[0]
             ## converts dfs to matrixes
             mat_lows  = res_base.fill_grid(df_subs.dry, fill_value=-2)
             ## plot
             im        = axe[i].imshow(mat_lows.reshape(self.nrows, self.ncols), cmap=cm)
             axe[i].set(title='SLR: {} m'.format(slr),
-                       xlabel='# Wetlands: {}'.format(
-                       df[((df['dry']==0) | (df['dry']==1))].shape[0]),
-                       )
+                       xlabel='# Wetlands: {}'.format(n_wets))
             if test: break
 
         cbar_ax   = fig.add_axes([0.945, 0.12, 0.025, 0.75])
@@ -213,6 +222,73 @@ class Wetlands(res_base):
 
         fig.subplots_adjust(left=0.05, right=0.915, wspace=0.25, hspace=0.25)
         plt.show()
+
+    def check_performance(self, dtw_thresh=0.08, hrs_thresh=5185):
+        """ Check number of cells / percentages to create table of performance """
+        df = pd.read_pickle(op.join(self.path_data, 'dtw_hrs_wet_dry_masked.df'))
+        df_passed = df[((df.dtw_thresh<=dtw_thresh) & (df.hrs_thresh >= hrs_thresh))].iloc[0, :]
+
+        ### this should be encapsulated in fn; used here and make_indicator
+        mat_dtw  = self.mat_dtw[self.mask_z]
+        mask_wet = self.mask_wet[self.mask_z]
+        mat_wet_dtw    = mat_dtw[~mask_wet]
+        mat_nonwet_dtw = mat_dtw[mask_wet]
+        mat_dry_dtw    = mat_nonwet_dtw[~np.isnan(mat_nonwet_dtw)].reshape(
+                                                -1, mat_nonwet_dtw.shape[1])
+        total_ccap    = mat_wet_dtw.shape[0]
+        total_nonccap = mat_dry_dtw.shape[0]
+        total_wets    = df_passed.loc['n_wet'] + df_passed.loc['n_dry']
+        total_subs    = self.df_swmm.shape[0]
+        df_raw = pd.DataFrame(np.zeros([4, 3]), columns=['sim_wet', 'true_wet', 'per_covering'], index=['A', 'B', 'C', 'D'])
+
+        df_raw.loc['A', :] = ['Yes', 'Yes', round(df_passed.loc['n_wet']/total_subs*100, 2)] # correct
+        df_raw.loc['B', :] = ['No', 'Yes', round((total_ccap - total_wets) / total_subs*100, 2)] # pretty sure correct
+        df_raw.loc['C', :] = ['Yes', 'No', round(df_passed.loc['n_dry']/total_subs*100, 2)] # correct
+        df_raw.loc['D', :] = ['No', 'No',  round((total_subs-total_wets) / total_subs*100, 2)]
+        print df_raw
+        print (df_raw.iloc[:, 2].sum())
+
+
+
+
+        return
+
+    def overlay_sim_true(self, dtw_thresh=0.08, hrs_thresh=5185):
+        """ Compare the simulated/nonsimulated wetlands vs ccap """
+        df = pd.read_pickle(op.join(self.path_data, 'dtw_hrs_wet_dry_masked.df'))
+        df_passed = df[((df.dtw_thresh<=dtw_thresh) & (df.hrs_thresh >= hrs_thresh))].iloc[0, :]
+        df_dtw   = self.find_cells(dtw_thresh, hrs_thresh, one_slr=True)[0.0]
+        df_subs   = pd.DataFrame(index=self.df_swmm.index)
+        ## change value for cells not considered (visualization purposes)
+        df_subs['dry'] = df_subs.index.map(lambda x: df_dtw.loc[x, 'dry']
+                                        if x in df_dtw.index.values else 1)
+        n_wets = df_subs[df_subs['dry']<0].shape[0] + df_subs[df_subs['dry']==0].shape[0]
+        ## converts dfs to matrix of wetland types
+        ## -2: inactive | -1: wetland (ccap) | 0: wetland(nonccap) | 1: upland
+        mat_lows     = res_base.fill_grid(df_subs.dry, fill_value=-2)
+        mask_in_ccap = ~self.mask_wet & self.mask_z
+        df_lows      = pd.DataFrame(mat_lows.reshape(-1), columns=['type'])
+        df_lows['true'] = mask_in_ccap
+        # return
+        df_lows['sim'] = df_lows['type'].apply(lambda x: True if x == -1 or x == 0 else False)
+        ## get rid of inactive cells
+        df_lows = df_lows[df_lows['type']>-2]
+
+        ## make cases
+        total_subs = df_lows.shape[0]
+        a = float(np.count_nonzero((df_lows['sim']) & (df_lows['true'])))
+        b = float(np.count_nonzero((~df_lows['sim']) & (df_lows['true'])))
+        c = float(np.count_nonzero((df_lows['sim']) & (~df_lows['true'])))
+        d = float(np.count_nonzero((~df_lows['sim']) & (~df_lows['true'])))
+
+        df_raw = pd.DataFrame(np.zeros([4, 3]), columns=['sim_wet', 'true_wet', 'per_covering'], index=['A', 'B', 'C', 'D'])
+        df_raw.loc['A', :] = ['Yes', 'Yes', round(a/total_subs*100, 2)]
+        df_raw.loc['B', :] = ['No', 'Yes', round(c/total_subs*100, 2)]
+        df_raw.loc['C', :] = ['Yes', 'No', round(b/total_subs*100, 2)]
+        df_raw.loc['D', :] = ['No', 'No',  round(d/total_subs*100, 2)]
+
+        print (df_raw)
+        print (df_raw.iloc[:, 2].sum())
 
     ##### not using below this
     def optimize(self, increment=1):
@@ -342,7 +418,6 @@ class Wetlands(res_base):
     ### probably useless
     def dtw_wet_avg_ann(self):
         """ Subset dtw df (all cells, annual average to just wetland cells """
-
         ## avg annual dtw
         df_dtw  = dtw(self.path_res).df_year
         df_dtw.columns = [str(col) for col in df_dtw.columns]
@@ -355,10 +430,15 @@ PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
 res      = Wetlands(PATH_res, z_thresh=3.75)
 # res.optimize(increment=10)
-res.make_indicator(dtw_inc=0.01, hrs_per=50, masked=True, seasonal=False)
+# res.make_indicator(dtw_inc=0.01, hrs_per=50, masked=True, seasonal=False)
+# res.apply_indicator(0.08, hrs_thresh=5182)
+res.check_performance()
+res.overlay_sim_true()
 
-## nonseasonal indicators: dtw < 0.05; hrs_thresh>4443 --------- best
+## wetland masked, nonseasonal: dtw <= 0.08; hrs_thesh >=5182 ------- best
+## nonseasonal indicators: dtw < 0.05; hrs_thresh>4443
 ## seasonal indicators   : dtw < 0.17; hrs_thresh > 1211
 
-# res.find_cells(0.05, hrs_thresh=4442)
+# res.find_cells(0.08, hrs_thresh=5182)
 # res.plot_wets_drys()
+# print len(res.ts_day)
