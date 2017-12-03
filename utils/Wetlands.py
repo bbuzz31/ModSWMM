@@ -223,36 +223,6 @@ class Wetlands(res_base):
         fig.subplots_adjust(left=0.05, right=0.915, wspace=0.25, hspace=0.25)
         plt.show()
 
-    def check_performance(self, dtw_thresh=0.08, hrs_thresh=5185):
-        """ Check number of cells / percentages to create table of performance """
-        df = pd.read_pickle(op.join(self.path_data, 'dtw_hrs_wet_dry_masked.df'))
-        df_passed = df[((df.dtw_thresh<=dtw_thresh) & (df.hrs_thresh >= hrs_thresh))].iloc[0, :]
-
-        ### this should be encapsulated in fn; used here and make_indicator
-        mat_dtw  = self.mat_dtw[self.mask_z]
-        mask_wet = self.mask_wet[self.mask_z]
-        mat_wet_dtw    = mat_dtw[~mask_wet]
-        mat_nonwet_dtw = mat_dtw[mask_wet]
-        mat_dry_dtw    = mat_nonwet_dtw[~np.isnan(mat_nonwet_dtw)].reshape(
-                                                -1, mat_nonwet_dtw.shape[1])
-        total_ccap    = mat_wet_dtw.shape[0]
-        total_nonccap = mat_dry_dtw.shape[0]
-        total_wets    = df_passed.loc['n_wet'] + df_passed.loc['n_dry']
-        total_subs    = self.df_swmm.shape[0]
-        df_raw = pd.DataFrame(np.zeros([4, 3]), columns=['sim_wet', 'true_wet', 'per_covering'], index=['A', 'B', 'C', 'D'])
-
-        df_raw.loc['A', :] = ['Yes', 'Yes', round(df_passed.loc['n_wet']/total_subs*100, 2)] # correct
-        df_raw.loc['B', :] = ['No', 'Yes', round((total_ccap - total_wets) / total_subs*100, 2)] # pretty sure correct
-        df_raw.loc['C', :] = ['Yes', 'No', round(df_passed.loc['n_dry']/total_subs*100, 2)] # correct
-        df_raw.loc['D', :] = ['No', 'No',  round((total_subs-total_wets) / total_subs*100, 2)]
-        print df_raw
-        print (df_raw.iloc[:, 2].sum())
-
-
-
-
-        return
-
     def overlay_sim_true(self, dtw_thresh=0.08, hrs_thresh=5185):
         """ Compare the simulated/nonsimulated wetlands vs ccap """
         df = pd.read_pickle(op.join(self.path_data, 'dtw_hrs_wet_dry_masked.df'))
