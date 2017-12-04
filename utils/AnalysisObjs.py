@@ -8,7 +8,7 @@ import BB
 import os
 import os.path as op
 import swmmtoolbox as swmtbx
-from components import bcpl
+from   components import bcpl
 
 from collections import OrderedDict
 import random
@@ -50,7 +50,9 @@ class res_base(object):
         self.slr        = sorted(self.slr_names)
         self.st         = '2011-12-01-00'
         self.end        = '2012-11-30-00'
-        self.ts_yr_hr   = self.ts_hr[3696:-698]
+        self.ts_st      = 3696
+        self.ts_end     = -698
+        self.ts_yr_hr   = self.ts_hr[self.ts_st:self.ts_end]
         self.ts_yr_day  = self.ts_day[154:-30]
         self.nrows      = 74
         self.ncols      = 51
@@ -231,10 +233,10 @@ class res_base(object):
         curfig.savefig(op.join(self.path_fig, curfig.get_label()))
 
     @staticmethod
-    def fill_grid(ser):
+    def fill_grid(ser, fill_value=np.nan):
         """ Create WNC grid from a series with 1 indexed zones and values """
         mat = np.zeros([3774])
-        mat[:] = np.nan
+        mat[:] = fill_value
         # parse numpy array where column 1 is an index
         if isinstance(ser, np.ndarray):
             for i, idx in enumerate(ser[1, :]):
@@ -661,7 +663,7 @@ class dtw(res_base):
         res_base.__init__(self, path_result)
         # super(dtw, self).__init__(path_result)
 
-        # pickle converted this to a year
+        ### annual average, all cells; pickle converted this to a year
         self.df_year  = pd.read_pickle(op.join(self.path_picks, 'dtw_yr.df'))
         # print (self.df_year.head())
         self.df_area  = pd.read_pickle(op.join(self.path_picks, 'percent_at_surface.df'))#.loc['2011-12-01-00':, :]
@@ -694,7 +696,7 @@ class dtw(res_base):
             for ax in axe:
                 ax.set_xlabel('% Area ({})'.format(compare))
             fig.set_label('dtw_{}'.format(compare))
-    
+
         return df_hrs
 
     def plot_hist_dtw(self, bins=10):
