@@ -233,14 +233,15 @@ class Wetlands(res_base):
         df_subs['dry'] = df_subs.index.map(lambda x: df_dtw.loc[x, 'dry']
                                         if x in df_dtw.index.values else 1)
         n_wets = df_subs[df_subs['dry']<0].shape[0] + df_subs[df_subs['dry']==0].shape[0]
+
         ## converts dfs to matrix of wetland types
         ## -2: inactive | -1: wetland (ccap) | 0: wetland(nonccap) | 1: upland
-        mat_lows     = res_base.fill_grid(df_subs.dry, fill_value=-2)
-        mask_in_ccap = ~self.mask_wet & self.mask_z
-        df_lows      = pd.DataFrame(mat_lows.reshape(-1), columns=['type'])
+        mat_lows        = res_base.fill_grid(df_subs.dry, fill_value=-2)
+        mask_in_ccap    = ~self.mask_wet & self.mask_z
+        df_lows         = pd.DataFrame(mat_lows.reshape(-1), columns=['type'])
         df_lows['true'] = mask_in_ccap
-        # return
-        df_lows['sim'] = df_lows['type'].apply(lambda x: True if x == -1 or x == 0 else False)
+        df_lows['sim']  = df_lows['type'].apply(lambda x: True if x == -1 or x == 0 else False)
+
         ## get rid of inactive cells
         df_lows = df_lows[df_lows['type']>-2]
 
@@ -399,16 +400,14 @@ class Wetlands(res_base):
 PATH_res = op.join(op.expanduser('~'), 'Google_Drive',
                     'WNC', 'Wetlands_Paper', 'Results_Default')
 res      = Wetlands(PATH_res, z_thresh=3.75)
-# res.optimize(increment=10)
+
+### steps
 # res.make_indicator(dtw_inc=0.01, hrs_per=50, masked=True, seasonal=False)
 # res.apply_indicator(0.08, hrs_thresh=5182)
-res.check_performance()
-res.overlay_sim_true()
+# res.find_cells(0.08, hrs_thresh=5182)
+# res.plot_wets_drys()
+# res.overlay_sim_true()
 
 ## wetland masked, nonseasonal: dtw <= 0.08; hrs_thesh >=5182 ------- best
 ## nonseasonal indicators: dtw < 0.05; hrs_thresh>4443
 ## seasonal indicators   : dtw < 0.17; hrs_thresh > 1211
-
-# res.find_cells(0.08, hrs_thresh=5182)
-# res.plot_wets_drys()
-# print len(res.ts_day)
