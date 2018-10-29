@@ -1,6 +1,5 @@
 """ wncSWMM Classes """
 from __future__ import print_function
-import BB
 import os
 import os.path as op
 import time
@@ -182,7 +181,7 @@ class WNC_SWMM_Inps(WNC_Base):
         if self.params.get('Verbose'):
             print ('  ***********************************',
                   '\n  SWMM Input File Created at: ',
-                  '\n  ...',"/".join(BB.splitall(inp_file)[-4:]),
+                  '\n  {}'.format(inp_file),
                   '\n  SWMM Time Step:', tstep, '(hr:min:sec)',
                   '\n  SWMM simulation length:', swmm_days, 'days',
                   '\n  ***********************************\n')
@@ -194,3 +193,6 @@ def main(path_root, write=True, **params):
         wnc_obj.swmm_write()
     else:
         print (wnc_obj.swmm_objs()[0])
+
+if __name__ == '__main__':
+    print (os.sys.path)

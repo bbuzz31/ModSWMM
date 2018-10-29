@@ -36,8 +36,6 @@ Notes:
 from __future__ import print_function
 from components import wncNWT, wncSWMM, bcpl, swmmSOL as swmm
 from utils import PickleRaw, PickleFmt
-
-import BB
 import os
 import os.path as op
 import time
@@ -409,7 +407,7 @@ if __name__ == '__main__':
     typecheck = Schema({'KPERS'     : Use(int), 'PARM'  : Use(str),
                         '--coupled' : Use(int), '--dev' : Use(int)},
                         ignore_extra_keys=True)
-    
+
     args = typecheck.validate(arguments)
     SLR = [0.0, 1.0, 2.0]
 
