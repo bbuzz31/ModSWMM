@@ -36,7 +36,7 @@ PySAL==1.13.0
 pyshp==1.2.10
 python-dateutil==2.6.0
 pytz==2016.7
-requests==2.20.0
+requests==2.31.0
 rst2ansi==0.1.5
 Rtree==0.8.3
 schema==0.6.5
