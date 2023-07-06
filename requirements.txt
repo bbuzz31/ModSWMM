@@ -40,7 +40,7 @@ requests==2.20.0
 rst2ansi==0.1.5
 Rtree==0.8.3
 schema==0.6.5
-scipy==0.19.0
+scipy==1.10.0
 Shapely==1.5.16
 six==1.10.0
 snowballstemmer==1.2.1
